@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -29,26 +29,26 @@ import org.jpos.q2.QBeanSupportMBean;
  */
 public interface OneShotChannelAdaptorMK2MBean extends QBeanSupportMBean
 {
-    public boolean isConnected();
+    boolean isConnected();
 
-    public java.lang.String getInQueue();
+    java.lang.String getInQueue();
 
-    public void setInQueue(java.lang.String in);
+    void setInQueue(java.lang.String in);
 
-    public java.lang.String getOutQueue();
+    java.lang.String getOutQueue();
 
-    public void setOutQueue(java.lang.String out);
+    void setOutQueue(java.lang.String out);
 
-    public java.lang.String getHost();
+    java.lang.String getHost();
 
-    public void setHost(java.lang.String host);
+    void setHost(java.lang.String host);
 
-    public int getPort();
+    int getPort();
 
-    public void setPort(int port);
+    void setPort(int port);
 
-    public java.lang.String getSocketFactory();
+    java.lang.String getSocketFactory();
 
-    public void setSocketFactory(java.lang.String sFac);
+    void setSocketFactory(java.lang.String sFac);
 
 }

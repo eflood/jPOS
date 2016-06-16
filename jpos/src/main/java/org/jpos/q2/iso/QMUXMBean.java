@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,10 +37,10 @@ public interface QMUXMBean extends org.jpos.q2.QBeanSupportMBean {
 
   java.lang.String getUnhandledQueue() ;
 
-  public void resetCounters ();
-  public String getCountersAsString ();
-  public int getTXCounter();
-  public int getRXCounter();
-  public long getLastTxnTimestampInMillis();
-  public long getIdleTimeInMillis();
+  void resetCounters();
+  String getCountersAsString();
+  int getTXCounter();
+  int getRXCounter();
+  long getLastTxnTimestampInMillis();
+  long getIdleTimeInMillis();
 }

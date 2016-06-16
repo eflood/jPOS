@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -39,5 +39,14 @@ public class QConfig extends QBeanSupport {
             throws NameRegistrar.NotFoundException
     {
         return (Configuration) NameRegistrar.get(PREFIX + name);
+    }
+
+    /**
+     * @param name configuration name
+     * @param timeout in millis
+     * @return Configuration object or null
+     */
+    public static Configuration getConfiguration (String name, long timeout) {
+        return (Configuration) NameRegistrar.get(PREFIX + name, timeout);
     }
 }

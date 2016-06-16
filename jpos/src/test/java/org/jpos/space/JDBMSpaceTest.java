@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -122,7 +122,7 @@ public class JDBMSpaceTest {
     @Test
     public void testGetLongThrowsNullPointerException() throws Throwable {
         try {
-            JDBMSpace.getLong((byte[]) null, 100);
+            JDBMSpace.getLong(null, 100);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -201,7 +201,7 @@ public class JDBMSpaceTest {
     @Test
     public void testPutLongThrowsNullPointerException() throws Throwable {
         try {
-            JDBMSpace.putLong((byte[]) null, 100, 100L);
+            JDBMSpace.putLong(null, 100, 100L);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -252,7 +252,7 @@ public class JDBMSpaceTest {
     public void testRefDeserializeThrowsNullPointerException() throws Throwable {
         JDBMSpace.Ref ref = new JDBMSpace.Ref(100L, 1000L);
         try {
-            ref.deserialize((byte[]) null);
+            ref.deserialize(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -264,7 +264,7 @@ public class JDBMSpaceTest {
 
     @Test
     public void testRefIsExpired() throws Throwable {
-        long expirytime = System.currentTimeMillis() + (365 * 24 * 60 * 60 * 1000);
+        long expirytime = System.currentTimeMillis() + 365 * 24 * 60 * 60 * 1000;
         boolean result = new JDBMSpace.Ref(100L, expirytime).isExpired();
         assertFalse("result", result);
     }

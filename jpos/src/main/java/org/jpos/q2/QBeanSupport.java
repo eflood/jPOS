@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,16 +18,19 @@
 
 package org.jpos.q2;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.Configurable;
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
 import org.jpos.util.ConcurrentUtil;
 import org.jpos.util.Log;
+import org.jpos.util.LogEvent;
+import org.jpos.util.Logger;
 
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.io.Closeable;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.Iterator;
@@ -185,6 +188,14 @@ public class QBeanSupport
     public boolean running () {
         return state == QBean.STARTING || state == QBean.STARTED;
     }
+    public void setConfiguration (Configuration cfg)
+      throws ConfigurationException
+    {
+        this.cfg = cfg;
+    }
+    public Configuration getConfiguration () {
+        return cfg;
+    }
     protected void initService()    throws Exception {}
     protected void startService()   throws Exception {}
     protected void stopService()    throws Exception {}
@@ -215,7 +226,7 @@ public class QBeanSupport
             for (PropertyDescriptor aDesc : desc) {
                 if (aDesc.getWriteMethod() != null) {
                     Method read = aDesc.getReadMethod();
-                    Object obj = read.invoke(this, new Object[]{});
+                    Object obj = read.invoke(this);
                     String type = read.getReturnType().getName();
                     if ("java.lang.String".equals(type))
                         type = null;
@@ -241,15 +252,15 @@ public class QBeanSupport
         return getPersist().getChildren ("attr").iterator();
     }
     protected Iterator getAttrs (String parent) {
-        return getPersist().getChild (parent).
-            getChildren ("attr").iterator();
+        return getPersist().getChild(parent).
+            getChildren("attr").iterator();
     }
     protected void setAttr (Iterator attrs, String name, Object obj) {
         String value = obj == null ? "null" : obj.toString ();
         while (attrs.hasNext ()) {
             Element e = (Element) attrs.next ();
             if (name.equals (e.getAttributeValue ("name")))  {
-                e.setText (value);
+                e.setText(value);
                 break;
             }
         }
@@ -276,12 +287,18 @@ public class QBeanSupport
         }
         return null;
     }
-    public void setConfiguration (Configuration cfg)
-        throws ConfigurationException
-    {
-        this.cfg = cfg;
-    }
-    public Configuration getConfiguration () {
-        return cfg;
+    protected void close (Closeable... closeables) {
+        LogEvent evt = null;
+        for (Closeable c : closeables) {
+            try {
+                c.close();
+            } catch (Exception e) {
+                if (evt == null)
+                    evt = getLog().createWarn();
+                evt.addMessage(e);
+            }
+        }
+        if (evt != null)
+            Logger.log(evt);
     }
 }

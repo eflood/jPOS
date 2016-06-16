@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -51,20 +51,6 @@ public class SimpleLogSourceTest {
     }
 
     @Test
-    public void testErrorThrowsNullPointerException() throws Throwable {
-        Logger logger = new Logger();
-        SimpleLogSource bSHTransactionParticipant = new BSHTransactionParticipant();
-        logger.addListener(null);
-        bSHTransactionParticipant.setLogger(logger, "testSimpleLogSourceRealm");
-        try {
-            bSHTransactionParticipant.error("testSimpleLogSourceDetail");
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
-    }
-
-    @Test
     public void testGetLogger() throws Throwable {
         Logger logger = new Logger();
         SimpleLogSource bSHTransactionParticipant = new BSHTransactionParticipant();
@@ -94,20 +80,6 @@ public class SimpleLogSourceTest {
     }
 
     @Test
-    public void testInfoThrowsNullPointerException() throws Throwable {
-        Logger logger = new Logger();
-        SimpleLogSource bSHTransactionParticipant = new BSHTransactionParticipant();
-        logger.addListener(null);
-        bSHTransactionParticipant.setLogger(logger, "testSimpleLogSourceRealm");
-        try {
-            bSHTransactionParticipant.info("testSimpleLogSourceDetail");
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
-    }
-
-    @Test
     public void testSetLogger() throws Throwable {
         Logger logger = new Logger();
         SimpleLogSource bSHTransactionParticipant = new BSHTransactionParticipant();
@@ -130,19 +102,5 @@ public class SimpleLogSourceTest {
     public void testWarning() throws Throwable {
         new BSHTransactionParticipant().warning("testSimpleLogSourceDetail", "");
         assertTrue("Test completed without Exception", true);
-    }
-
-    @Test
-    public void testWarningThrowsNullPointerException() throws Throwable {
-        Logger logger = new Logger();
-        SimpleLogSource bSHTransactionParticipant = new BSHTransactionParticipant();
-        logger.addListener(null);
-        bSHTransactionParticipant.setLogger(logger, "testSimpleLogSourceRealm");
-        try {
-            bSHTransactionParticipant.warning("testSimpleLogSourceDetail");
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
     }
 }

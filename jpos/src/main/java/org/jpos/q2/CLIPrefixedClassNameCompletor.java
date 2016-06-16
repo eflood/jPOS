@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -158,8 +157,9 @@ public class CLIPrefixedClassNameCompletor extends SimpleCompletor
         {
             for (String prefix : prefixes)
             {
-                final String p = prefix;
-                if (element.startsWith(p)) { return element.substring(p.length()).toLowerCase(); }
+                if (element.startsWith(prefix) && !element.contains("$")) {
+                    return element.substring(prefix.length()).toLowerCase();
+                }
             }
             return null;
         }

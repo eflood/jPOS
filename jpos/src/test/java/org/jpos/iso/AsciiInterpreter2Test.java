@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -55,7 +55,7 @@ public class AsciiInterpreter2Test {
     @Test
     public void testInterpretThrowsNullPointerException() throws Throwable {
         try {
-            new AsciiInterpreter().interpret("testAsciiInterpreterData", (byte[]) null, 100);
+            new AsciiInterpreter().interpret("testAsciiInterpreterData", null, 100);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -95,7 +95,7 @@ public class AsciiInterpreter2Test {
     @Test
     public void testUninterpretThrowsNullPointerException() throws Throwable {
         try {
-            new AsciiInterpreter().uninterpret((byte[]) null, 100, 1000);
+            new AsciiInterpreter().uninterpret(null, 100, 1000);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -77,6 +77,7 @@ public abstract class BaseChannel extends Observable
     private int port, timeout, connectTimeout, localPort;
     private int maxPacketLength = 100000;
     private boolean keepAlive;
+    private boolean expectKeepAlive;
     private boolean soLingerOn = true;
     private int soLingerSeconds = 5;
     private Configuration cfg;
@@ -101,6 +102,8 @@ public abstract class BaseChannel extends Observable
     protected String originalRealm = null;
     protected byte[] header = null;
     private static final int DEFAULT_TIMEOUT = 300000;
+    private int nextHostPort = 0;
+    private boolean roundRobin = false;
 
     /**
      * constructor shared by server and client
@@ -305,7 +308,7 @@ public abstract class BaseChannel extends Observable
                 } else if (localIface == null && localPort == 0){
                     return new Socket(host,port);
                 } else {
-                    InetAddress addr = (localIface == null) ?
+                    InetAddress addr = localIface == null ?
                         InetAddress.getLocalHost() : 
                         InetAddress.getByName(localIface);
                     return new Socket(host, port, addr, localPort);
@@ -319,10 +322,13 @@ public abstract class BaseChannel extends Observable
         throws IOException
     {
         Socket s = null;
+        if (!roundRobin)
+            nextHostPort = 0;
         for (int i=0; i<hosts.length; i++) {
             try {
-                evt.addMessage (hosts[i]+":"+ports[i]);
-                s = newSocket (hosts[i], ports[i]);
+                int ii = nextHostPort++ % hosts.length;
+                evt.addMessage ("Try " + i + " " + hosts[ii]+":"+ports[ii]);
+                s = newSocket (hosts[ii], ports[ii]);
                 break;
             } catch (IOException e) {
                 evt.addMessage ("  " + e.getMessage());
@@ -546,7 +552,7 @@ public abstract class BaseChannel extends Observable
     protected int getHeaderLength(byte[] b) { return 0; }
 
     protected int getHeaderLength(ISOMsg m) {                                   
-        return (!overrideHeader && m.getHeader() != null) ?
+        return !overrideHeader && m.getHeader() != null ?
             m.getHeader().length : getHeaderLength();
     }                                                                           
 
@@ -571,7 +577,7 @@ public abstract class BaseChannel extends Observable
         LogEvent evt = new LogEvent (this, "send");
         try {
             if (!isConnected())
-                throw new ISOException ("unconnected ISOChannel");
+                throw new IOException ("unconnected ISOChannel");
             m.setDirection(ISOMsg.OUTGOING);
             ISOPackager p = getDynamicPackager(m);
             m.setPackager (p);
@@ -603,7 +609,7 @@ public abstract class BaseChannel extends Observable
             throw e;
         } catch (Exception e) {
             evt.addMessage (e);
-            throw new ISOException ("unexpected exception", e);
+            throw new IOException ("unexpected exception", e);
         } finally {
             Logger.log (evt);
         }
@@ -692,10 +698,17 @@ public abstract class BaseChannel extends Observable
         m.setSource (this);
         try {
             if (!isConnected())
-                throw new ISOException ("unconnected ISOChannel");
+                throw new IOException ("unconnected ISOChannel");
 
             synchronized (serverInLock) {
                 int len  = getMessageLength();
+                if (expectKeepAlive) {
+                    while (len == 0) {
+                        //If zero length, this is a keep alive msg
+                        Logger.log(new LogEvent(this, "receive", "Zero length keep alive message received"));
+                        len  = getMessageLength();
+                    }
+                }
                 int hLen = getHeaderLength();
 
                 if (len == -1) {
@@ -759,10 +772,11 @@ public abstract class BaseChannel extends Observable
             if (usable) 
                 evt.addMessage (e);
             throw e;
-        } catch (Exception e) { 
+        } catch (Exception e) {
+            closeSocket();
             evt.addMessage (m);
             evt.addMessage (e);
-            throw new ISOException ("unexpected exception", e);
+            throw new IOException ("unexpected exception", e);
         } finally {
             Logger.log (evt);
         }
@@ -943,7 +957,7 @@ public abstract class BaseChannel extends Observable
         throws VetoException
     {
         for (ISOFilter f :incomingFilters) {
-            if (image != null && (f instanceof RawIncomingFilter))
+            if (image != null && f instanceof RawIncomingFilter)
                 m = ((RawIncomingFilter)f).filter (this, m, header, image, evt);
             else
                 m = f.filter (this, m, evt);
@@ -996,6 +1010,8 @@ public abstract class BaseChannel extends Observable
         }
         setOverrideHeader(cfg.getBoolean ("override-header", false));
         keepAlive = cfg.getBoolean ("keep-alive", false);
+        expectKeepAlive = cfg.getBoolean ("expect-keep-alive", false);
+        roundRobin = cfg.getBoolean ("round-robin", false);
         if (socketFactory != this && socketFactory instanceof Configurable)
             ((Configurable)socketFactory).setConfiguration (cfg);
         try {
@@ -1084,6 +1100,7 @@ public abstract class BaseChannel extends Observable
                 if (shutdownSupportedBySocket(s) && !isSoLingerForcingImmediateTcpReset())
                     s.shutdownOutput();  // This will force a TCP FIN to be sent on regular sockets,
             } catch (SocketException e) {
+                // NOPMD
                 // safe to ignore - can be closed already
                 // e.printStackTrace();
             }

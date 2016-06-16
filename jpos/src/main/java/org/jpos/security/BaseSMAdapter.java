@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -31,6 +31,9 @@ import org.jpos.util.NameRegistrar;
 import org.jpos.util.NameRegistrar.NotFoundException;
 import org.jpos.util.SimpleMsg;
 
+import java.security.MessageDigest;
+import java.security.PublicKey;
+import java.security.spec.AlgorithmParameterSpec;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -145,6 +148,28 @@ public class BaseSMAdapter
         try {
             result = generateKeyCheckValueImpl(kd);
             evt.addMessage(new SimpleMsg("result", "Generated Key Check Value", ISOUtil.hexString(result)));
+        } catch (Exception e) {
+            evt.addMessage(e);
+            throw  e instanceof SMException ? (SMException) e : new SMException(e);
+        } finally {
+            Logger.log(evt);
+        }
+        return  result;
+    }
+
+    @Override
+    public SecureDESKey translateKeyScheme (SecureDESKey key, KeyScheme destKeyScheme)
+            throws SMException {
+        SimpleMsg[] cmdParameters =  {
+            new SimpleMsg("parameter", "Key", key)
+           ,new SimpleMsg("parameter", "Destination Key Scheme", destKeyScheme)
+        };
+        LogEvent evt = new LogEvent(this, "s-m-operation");
+        evt.addMessage(new SimpleMsg("command", "Translate Key Scheme", cmdParameters));
+        SecureDESKey result = null;
+        try {
+            result = translateKeySchemeImpl(key, destKeyScheme);
+            evt.addMessage(new SimpleMsg("result", "Translate Key Scheme", result));
         } catch (Exception e) {
             evt.addMessage(e);
             throw  e instanceof SMException ? (SMException) e : new SMException(e);
@@ -292,6 +317,12 @@ public class BaseSMAdapter
     @Override
     public EncryptedPIN importPIN (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
             SecureDESKey bdk) throws SMException {
+        return importPIN(pinUnderDuk,ksn,bdk,false);
+    }
+
+    @Override
+    public EncryptedPIN importPIN (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
+            SecureDESKey bdk, boolean tdes) throws SMException {
         SimpleMsg[] cmdParameters =  {
             new SimpleMsg("parameter", "PIN under Derived Unique Key", pinUnderDuk), new SimpleMsg("parameter",
                     "Key Serial Number", ksn), new SimpleMsg("parameter", "Base Derivation Key",
@@ -301,7 +332,7 @@ public class BaseSMAdapter
         evt.addMessage(new SimpleMsg("command", "Import PIN", cmdParameters));
         EncryptedPIN result = null;
         try {
-            result = importPINImpl(pinUnderDuk, ksn, bdk);
+            result = importPINImpl(pinUnderDuk, ksn, bdk, tdes);
             evt.addMessage(new SimpleMsg("result", "PIN under LMK", result));
         } catch (Exception e) {
             evt.addMessage(e);
@@ -315,6 +346,12 @@ public class BaseSMAdapter
     @Override
     public EncryptedPIN translatePIN (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
             SecureDESKey bdk, SecureDESKey kd2, byte destinationPINBlockFormat) throws SMException {
+        return translatePIN(pinUnderDuk,ksn,bdk,kd2,destinationPINBlockFormat,false);
+    }
+
+    @Override
+    public EncryptedPIN translatePIN (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
+            SecureDESKey bdk, SecureDESKey kd2, byte destinationPINBlockFormat,boolean tdes) throws SMException {
         SimpleMsg[] cmdParameters =  {
             new SimpleMsg("parameter", "PIN under Derived Unique Key", pinUnderDuk), new SimpleMsg("parameter",
                     "Key Serial Number", ksn), new SimpleMsg("parameter", "Base Derivation Key",
@@ -325,7 +362,7 @@ public class BaseSMAdapter
         evt.addMessage(new SimpleMsg("command", "Translate PIN", cmdParameters));
         EncryptedPIN result = null;
         try {
-            result = translatePINImpl(pinUnderDuk, ksn, bdk, kd2, destinationPINBlockFormat);
+            result = translatePINImpl(pinUnderDuk, ksn, bdk, kd2, destinationPINBlockFormat,tdes);
             evt.addMessage(new SimpleMsg("result", "PIN under Data Key 2", result));
         } catch (Exception e) {
             evt.addMessage(e);
@@ -667,6 +704,31 @@ public class BaseSMAdapter
     }
 
     @Override
+    public String calculateCAVV(String accountNo, SecureDESKey cvk, String upn,
+                                String authrc, String sfarc) throws SMException {
+
+      List<Loggeable> cmdParameters = new ArrayList<Loggeable>();
+      cmdParameters.add(new SimpleMsg("parameter", "account number", accountNo));
+      cmdParameters.add(new SimpleMsg("parameter", "cvk", cvk == null ? "" : cvk));
+      cmdParameters.add(new SimpleMsg("parameter", "unpredictable number", upn));
+      cmdParameters.add(new SimpleMsg("parameter", "auth rc", authrc));
+      cmdParameters.add(new SimpleMsg("parameter", "second factor auth rc", sfarc));
+      LogEvent evt = new LogEvent(this, "s-m-operation");
+      evt.addMessage(new SimpleMsg("command", "Calculate CAVV/AAV", cmdParameters));
+      String result = null;
+      try {
+          result = calculateCAVVImpl(accountNo, cvk, upn, authrc, sfarc);
+          evt.addMessage(new SimpleMsg("result", "Calculated CAVV/AAV", result));
+      } catch (Exception e) {
+          evt.addMessage(e);
+          throw e instanceof SMException ? (SMException) e : new SMException(e);
+      } finally {
+          Logger.log(evt);
+      }
+      return result;
+    }
+
+    @Override
     public boolean verifyCVV(String accountNo , SecureDESKey cvkA, SecureDESKey cvkB,
                             String cvv, Date expDate, String serviceCode) throws SMException {
 
@@ -690,6 +752,32 @@ public class BaseSMAdapter
       } finally {
         Logger.log(evt);
       }
+    }
+
+    @Override
+    public boolean verifyCAVV(String accountNo, SecureDESKey cvk, String cavv,
+                              String upn, String authrc, String sfarc) throws SMException {
+
+      List<Loggeable> cmdParameters = new ArrayList<Loggeable>();
+      cmdParameters.add(new SimpleMsg("parameter", "account number", accountNo));
+      cmdParameters.add(new SimpleMsg("parameter", "cvk", cvk == null ? "" : cvk));
+      cmdParameters.add(new SimpleMsg("parameter", "cavv", cavv == null ? "" : cavv));
+      cmdParameters.add(new SimpleMsg("parameter", "unpredictable number", upn));
+      cmdParameters.add(new SimpleMsg("parameter", "auth rc", authrc));
+      cmdParameters.add(new SimpleMsg("parameter", "second factor auth rc", sfarc));
+      LogEvent evt = new LogEvent(this, "s-m-operation");
+      evt.addMessage(new SimpleMsg("command", "Verify CAVV/AAV", cmdParameters));
+      boolean r = false;
+      try {
+          r = verifyCAVVImpl(accountNo, cvk, cavv, upn, authrc, sfarc);
+          evt.addMessage(new SimpleMsg("result", "Verification status", r));
+      } catch (Exception e) {
+          evt.addMessage(e);
+          throw e instanceof SMException ? (SMException) e : new SMException(e);
+      } finally {
+          Logger.log(evt);
+      }
+      return r;
     }
 
     @Override
@@ -732,6 +820,7 @@ public class BaseSMAdapter
      * @param mkdm ICC Master Key Derivation Method. If {@code null} specified
      *        is assumed.
      * @param cvc3 dynamic Card Verification Code 3
+     * @return true if cvc3 is valid false if not
      * @throws SMException
      */
     @Override
@@ -752,7 +841,7 @@ public class BaseSMAdapter
       LogEvent evt = new LogEvent(this, "s-m-operation");
       evt.addMessage(new SimpleMsg("command", "Verify CVC3", cmdParameters));
       try {
-        boolean r = verifyCVC3Impl( imkcvc3, accountNo, acctSeqNo, atc, upn, data, mkdm, cvc3);
+        boolean r = verifyCVC3Impl(imkcvc3, accountNo, acctSeqNo, atc, upn, data, mkdm, cvc3);
         evt.addMessage(new SimpleMsg("result", "Verification status", r ? "valid" : "invalid"));
         return r;
       } catch (Exception e) {
@@ -782,7 +871,7 @@ public class BaseSMAdapter
       LogEvent evt = new LogEvent(this, "s-m-operation");
       evt.addMessage(new SimpleMsg("command", "Verify ARQC/TC/AAC", cmdParameters));
       try {
-        boolean r = verifyARQCImpl( mkdm, skdm, imkac, accoutNo, acctSeqNo, arqc, atc, upn, transData);
+        boolean r = verifyARQCImpl(mkdm, skdm, imkac, accoutNo, acctSeqNo, arqc, atc, upn, transData);
         evt.addMessage(new SimpleMsg("result", "Verification status", r ? "valid" : "invalid"));
         return r;
       } catch (Exception e) {
@@ -816,8 +905,8 @@ public class BaseSMAdapter
       LogEvent evt = new LogEvent(this, "s-m-operation");
       evt.addMessage(new SimpleMsg("command", "Genarate ARPC", cmdParameters));
       try {
-        byte[] result = generateARPCImpl( mkdm, skdm, imkac, accoutNo, acctSeqNo
-                           ,arqc, atc, upn, arpcMethod, arc, propAuthData );
+        byte[] result = generateARPCImpl(mkdm, skdm, imkac, accoutNo, acctSeqNo
+            , arqc, atc, upn, arpcMethod, arc, propAuthData);
         evt.addMessage(new SimpleMsg("result", "Generated ARPC", result));
         return result;
       } catch (Exception e) {
@@ -852,8 +941,8 @@ public class BaseSMAdapter
       LogEvent evt = new LogEvent(this, "s-m-operation");
       evt.addMessage(new SimpleMsg("command", "Genarate ARPC", cmdParameters));
       try {
-        byte[] result = verifyARQCGenerateARPCImpl( mkdm, skdm, imkac, accoutNo,
-                acctSeqNo, arqc, atc, upn, transData, arpcMethod, arc, propAuthData );
+        byte[] result = verifyARQCGenerateARPCImpl(mkdm, skdm, imkac, accoutNo,
+                                                   acctSeqNo, arqc, atc, upn, transData, arpcMethod, arc, propAuthData);
         evt.addMessage(new SimpleMsg("result", "ARPC", result == null ? "" : ISOUtil.hexString(result)));
         return result;
       } catch (Exception e) {
@@ -882,7 +971,7 @@ public class BaseSMAdapter
       LogEvent evt = new LogEvent(this, "s-m-operation");
       evt.addMessage(new SimpleMsg("command", "Generate Secure Messaging MAC", cmdParameters));
       try {
-        byte[] mac = generateSM_MACImpl( mkdm, skdm, imksmi, accountNo, acctSeqNo, atc, arqc, data);
+        byte[] mac = generateSM_MACImpl(mkdm, skdm, imksmi, accountNo, acctSeqNo, atc, arqc, data);
         evt.addMessage(new SimpleMsg("result", "Generated MAC", mac!=null ? ISOUtil.hexString(mac) : ""));
         return mac;
       } catch (Exception e) {
@@ -938,6 +1027,90 @@ public class BaseSMAdapter
       } finally {
         Logger.log(evt);
       }
+    }
+
+    /**
+     * Encrypt Data Block.
+     *
+     * @param cipherMode block cipher mode
+     * @param kd DEK or ZEK key used to encrypt data
+     * @param data data to be encrypted
+     * @param iv initial vector
+     * @return encrypted data
+     * @throws SMException
+     */
+    @Override
+    public byte[] encryptData(CipherMode cipherMode, SecureDESKey kd
+            ,byte[] data, byte[] iv) throws SMException {
+
+        List<Loggeable> cmdParameters = new ArrayList<Loggeable>();
+        cmdParameters.add(new SimpleMsg("parameter", "Block Cipher Mode", cipherMode));
+        if(kd != null)
+            cmdParameters.add(new SimpleMsg("parameter", "Data key", kd));
+        if(data != null)
+            cmdParameters.add(new SimpleMsg("parameter", "Data", ISOUtil.hexString(data)));
+        if(iv != null)
+            cmdParameters.add(new SimpleMsg("parameter", "Initialization Vector", ISOUtil.hexString(iv)));
+
+        LogEvent evt = new LogEvent(this, "s-m-operation");
+        evt.addMessage(new SimpleMsg("command", "Encrypt Data", cmdParameters));
+        byte[] encData = null;
+        try {
+            encData = encryptDataImpl(cipherMode, kd, data, iv);
+            List<Loggeable> r = new ArrayList<Loggeable>();
+            r.add(new SimpleMsg("result", "Encrypted Data", encData));
+            if(iv != null)
+                r.add(new SimpleMsg("result", "Initialization Vector", iv));
+            evt.addMessage(new SimpleMsg("results", r));
+        } catch (Exception e) {
+            evt.addMessage(e);
+            throw e instanceof SMException ? (SMException) e : new SMException(e);
+        } finally {
+            Logger.log(evt);
+        }
+        return encData;
+    }
+
+    /**
+     * Decrypt Data Block.
+     *
+     * @param cipherMode block cipher mode
+     * @param kd DEK or ZEK key used to decrypt data
+     * @param data data to be decrypted
+     * @param iv initial vector
+     * @return decrypted data
+     * @throws SMException
+     */
+    @Override
+    public byte[] decryptData(CipherMode cipherMode, SecureDESKey kd
+            ,byte[] data, byte[] iv) throws SMException {
+
+        List<Loggeable> cmdParameters = new ArrayList<Loggeable>();
+        cmdParameters.add(new SimpleMsg("parameter", "Block Cipher Mode", cipherMode));
+        if(kd != null)
+            cmdParameters.add(new SimpleMsg("parameter", "Data key", kd));
+        if(data != null)
+            cmdParameters.add(new SimpleMsg("parameter", "Data", ISOUtil.hexString(data)));
+        if(iv != null)
+            cmdParameters.add(new SimpleMsg("parameter", "Initialization Vector", ISOUtil.hexString(iv)));
+
+        LogEvent evt = new LogEvent(this, "s-m-operation");
+        evt.addMessage(new SimpleMsg("command", "Decrypt Data", cmdParameters));
+        byte[] decData = null;
+        try {
+            decData = decryptDataImpl(cipherMode, kd, data, iv);
+            List<Loggeable> r = new ArrayList<Loggeable>();
+            r.add(new SimpleMsg("result", "Decrypted Data", decData));
+            if(iv != null)
+                r.add(new SimpleMsg("result", "Initialization Vector", iv));
+            evt.addMessage(new SimpleMsg("results", r));
+        } catch (Exception e) {
+            evt.addMessage(e);
+            throw e instanceof SMException ? (SMException) e : new SMException(e);
+        } finally {
+            Logger.log(evt);
+        }
+        return decData;
     }
 
     @Override
@@ -1003,6 +1176,55 @@ public class BaseSMAdapter
     }
 
     @Override
+    public Pair<PublicKey, SecurePrivateKey> generateKeyPair(AlgorithmParameterSpec spec)
+            throws SMException {
+        List<Loggeable> cmdParameters = new ArrayList<Loggeable>();
+        cmdParameters.add(new SimpleMsg("parameter", "Algorithm Parameter Spec", spec.getClass().getName()));
+
+        LogEvent evt = new LogEvent(this, "s-m-operation");
+        evt.addMessage(new SimpleMsg("command", "Generate public/private key pair", cmdParameters));
+        Pair<PublicKey, SecurePrivateKey> result = null;
+        try {
+            result = generateKeyPairImpl(spec);
+            SimpleMsg[] cmdResults = {
+                  new SimpleMsg("result", "Public Key", result.getValue0().getEncoded()),
+                  new SimpleMsg("result", "Private Key", result.getValue1().getKeyBytes())
+            };
+            evt.addMessage(new SimpleMsg("results", "Complex results", cmdResults));
+        } catch (Exception e) {
+            evt.addMessage(e);
+            throw  e instanceof SMException ? (SMException) e : new SMException(e);
+        } finally {
+            Logger.log(evt);
+        }
+        return result;
+    }
+
+    @Override
+    public byte[] calculateSignature(MessageDigest hash, SecurePrivateKey privateKey
+            ,byte[] data) throws SMException {
+        List<Loggeable> cmdParameters = new ArrayList<Loggeable>();
+        cmdParameters.add(new SimpleMsg("parameter", "Hash Identifier", hash));
+        cmdParameters.add(new SimpleMsg("parameter", "Private Key", privateKey));
+        cmdParameters.add(new SimpleMsg("parameter", "data", data));
+
+        LogEvent evt = new LogEvent(this, "s-m-operation");
+        evt.addMessage(new SimpleMsg("command", "Generate data signature", cmdParameters));
+        byte[] result = null;
+        try {
+            result = calculateSignatureImpl(hash, privateKey, data);
+            evt.addMessage(new SimpleMsg("result", "Data Signature", result));
+        } catch (Exception e) {
+            evt.addMessage(e);
+            throw  e instanceof SMException ? (SMException) e : new SMException(e);
+        } finally {
+            Logger.log(evt);
+        }
+        return result;
+    }
+
+
+    @Override
     public void eraseOldLMK () throws SMException {
         SimpleMsg[] cmdParameters =  {
         };
@@ -1041,10 +1263,23 @@ public class BaseSMAdapter
 
     /**
      * Your SMAdapter should override this method if it has this functionality
+     * @param key
+     * @param destKeyScheme
+     * @return translated key with {@code destKeyScheme} scheme
+     * @throws SMException
+     */
+    protected SecureDESKey translateKeySchemeImpl (SecureDESKey key, KeyScheme destKeyScheme)
+            throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
      * @param keyLength
      * @param keyType
      * @param encryptedKey
      * @param kek
+     * @param checkParity
      * @return imported key
      * @throws SMException
      */
@@ -1112,6 +1347,7 @@ public class BaseSMAdapter
 
     /**
      * Your SMAdapter should override this method if it has this functionality
+     * @deprecated
      * @param pinUnderDuk
      * @param ksn
      * @param bdk
@@ -1120,11 +1356,26 @@ public class BaseSMAdapter
      */
     protected EncryptedPIN importPINImpl (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
             SecureDESKey bdk) throws SMException {
+        return importPINImpl(pinUnderDuk,ksn,bdk,false);
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param pinUnderDuk
+     * @param ksn
+     * @param bdk
+     * @param tdes
+     * @return imported pin
+     * @throws SMException
+     */
+    protected EncryptedPIN importPINImpl (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
+            SecureDESKey bdk, boolean tdes) throws SMException {
         throw  new SMException("Operation not supported in: " + this.getClass().getName());
     }
 
     /**
      * Your SMAdapter should override this method if it has this functionality
+     * @deprecated
      * @param pinUnderDuk
      * @param ksn
      * @param bdk
@@ -1135,6 +1386,23 @@ public class BaseSMAdapter
      */
     protected EncryptedPIN translatePINImpl (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
             SecureDESKey bdk, SecureDESKey kd2, byte destinationPINBlockFormat) throws SMException {
+        return translatePINImpl(pinUnderDuk,ksn,bdk,kd2,destinationPINBlockFormat,false);
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param pinUnderDuk
+     * @param ksn
+     * @param bdk
+     * @param kd2
+     * @param tdes
+     * @param destinationPINBlockFormat
+     * @return translated pin
+     * @throws SMException
+     */
+    protected EncryptedPIN translatePINImpl (EncryptedPIN pinUnderDuk, KeySerialNumber ksn,
+            SecureDESKey bdk, SecureDESKey kd2, byte destinationPINBlockFormat,
+            boolean tdes) throws SMException {
         throw  new SMException("Operation not supported in: " + this.getClass().getName());
     }
 
@@ -1184,6 +1452,7 @@ public class BaseSMAdapter
      * @param pvkA
      * @param pvkB
      * @param pvkIdx
+     * @param excludes
      * @return PVV (VISA PIN Verification Value)
      * @throws SMException 
      */
@@ -1200,6 +1469,7 @@ public class BaseSMAdapter
      * @param pvkA
      * @param pvkB
      * @param pvkIdx
+     * @param excludes
      * @return PVV (VISA PIN Verification Value)
      * @throws SMException
      */
@@ -1217,6 +1487,7 @@ public class BaseSMAdapter
      * @param pvkB
      * @param pvki
      * @param pvv
+     * @return true if pin is valid false if not
      * @throws SMException
      */
     protected boolean verifyPVVImpl(EncryptedPIN pinUnderKd, SecureDESKey kd, SecureDESKey pvkA,
@@ -1269,6 +1540,7 @@ public class BaseSMAdapter
      * @param decTab
      * @param pinValData
      * @param minPinLen
+     * @return true if pin is valid false if not
      * @throws SMException
      */
     protected boolean verifyIBMPINOffsetImpl(EncryptedPIN pinUnderKd, SecureDESKey kd
@@ -1309,6 +1581,22 @@ public class BaseSMAdapter
         throw  new SMException("Operation not supported in: " + this.getClass().getName());
     }
 
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param accountNo
+     * @param cvk
+     * @param upn
+     * @param authrc
+     * @param sfarc
+     * @return Cardholder Authentication Verification Value
+     * @throws SMException
+     */
+    protected String calculateCAVVImpl(String accountNo, SecureDESKey cvk, String upn,
+                                    String authrc, String sfarc) throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
     /**
      * Your SMAdapter should override this method if it has this functionality
      * @param accountNo
@@ -1328,12 +1616,29 @@ public class BaseSMAdapter
     /**
      * Your SMAdapter should override this method if it has this functionality
      * @param accountNo
+     * @param cvk
+     * @param cavv
+     * @param upn
+     * @param authrc
+     * @param sfarc
+     * @return Cardholder Authentication Verification Value
+     * @throws SMException
+     */
+    protected boolean verifyCAVVImpl(String accountNo, SecureDESKey cvk, String cavv,
+                                     String upn, String authrc, String sfarc) throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param accountNo
      * @param imkac
      * @param dcvv
      * @param expDate
      * @param serviceCode
      * @param atc
      * @param mkdm
+     * @return true if dcvv is valid false if not
      * @throws SMException
      */
     protected boolean verifydCVVImpl(String accountNo, SecureDESKey imkac, String dcvv,
@@ -1352,6 +1657,7 @@ public class BaseSMAdapter
      * @param data
      * @param mkdm
      * @param cvc3
+     * @return true if cvc3 is valid false if not
      * @throws SMException
      */
     protected boolean verifyCVC3Impl(SecureDESKey imkcvc3, String accountNo, String acctSeqNo,
@@ -1413,6 +1719,7 @@ public class BaseSMAdapter
      * @param arqc
      * @param atc
      * @param upn
+     * @param transData
      * @param arpcMethod
      * @param arc
      * @param propAuthData
@@ -1478,6 +1785,34 @@ public class BaseSMAdapter
 
     /**
      * Your SMAdapter should override this method if it has this functionality
+     * @param cipherMode
+     * @param kd
+     * @param data
+     * @param iv
+     * @return encrypted data
+     * @throws SMException
+     */
+    protected byte[] encryptDataImpl(CipherMode cipherMode, SecureDESKey kd
+            ,byte[] data, byte[] iv) throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param cipherMode
+     * @param kd
+     * @param data
+     * @param iv
+     * @return decrypted data
+     * @throws SMException
+     */
+    protected byte[] decryptDataImpl(CipherMode cipherMode, SecureDESKey kd
+            ,byte[] data, byte[] iv) throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
      * @param data
      * @param kd
      * @return generated CBC-MAC
@@ -1507,6 +1842,30 @@ public class BaseSMAdapter
      * @throws SMException if the parity of the imported key is not adjusted AND checkParity = true
      */
     protected SecureDESKey translateKeyFromOldLMKImpl (SecureDESKey kd) throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param spec algorithm specific parameters (contains e.g. key size)
+     * @return key pair generated according to passed parameters
+     * @throws SMException
+     */
+    protected Pair<PublicKey, SecurePrivateKey> generateKeyPairImpl(AlgorithmParameterSpec spec)
+            throws SMException {
+        throw  new SMException("Operation not supported in: " + this.getClass().getName());
+    }
+
+    /**
+     * Your SMAdapter should override this method if it has this functionality
+     * @param hash identifier of the hash algorithm used to hash passed data.
+     * @param privateKey private key used to compute data signature.
+     * @param data data to be sifned.
+     * @return signature of passed data.
+     * @throws SMException
+     */
+    protected byte[] calculateSignatureImpl(MessageDigest hash, SecurePrivateKey privateKey
+            ,byte[] data) throws SMException {
         throw  new SMException("Operation not supported in: " + this.getClass().getName());
     }
 

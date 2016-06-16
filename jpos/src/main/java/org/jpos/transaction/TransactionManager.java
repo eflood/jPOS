@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,7 @@
 
 package org.jpos.transaction;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
 import org.jpos.q2.QBeanSupport;
@@ -28,6 +28,12 @@ import org.jpos.util.*;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.jpos.iso.ISOUtil;
 
 @SuppressWarnings("unchecked unused")
@@ -49,8 +55,9 @@ public class TransactionManager
     public static final long    MAX_PARTICIPANTS = 1000;  // loop prevention
     public static final long    MAX_WAIT = 15000L;
     public static final long    TIMER_PURGE_INTERVAL = 1000L;
-
     protected Map<String,List<TransactionParticipant>> groups;
+    private static final ThreadLocal<Serializable> tlContext = new ThreadLocal<Serializable>();
+    private static final ThreadLocal<Long> tlId = new ThreadLocal<Long>();
 
     Space sp;
     Space psp;
@@ -68,7 +75,7 @@ public class TransactionManager
     int maxSessions;
     int threshold;
     int maxActiveSessions;
-    int activeSessions;
+    AtomicInteger activeSessions = new AtomicInteger();
     long head, tail;
     long retryInterval = 5000L;
     long retryTimeout  = 60000L;
@@ -89,7 +96,7 @@ public class TransactionManager
         head = Math.max (initCounter (HEAD, tail), tail);
         initTailLock ();
 
-        groups = new HashMap();
+        groups = new HashMap<String,List<TransactionParticipant>>();
         initParticipants (getPersist());
         initStatusListeners (getPersist());
     }
@@ -97,8 +104,8 @@ public class TransactionManager
     @Override
     public void startService () throws Exception {
         NameRegistrar.register(getName(), this);
-        recover ();
-        threads = new ArrayList(maxSessions);
+        recover();
+        threads = Collections.synchronizedList(new ArrayList(maxSessions));
         if (tps != null)
             tps.stop();
         tps = new TPS (cfg.getBoolean ("auto-update-tps", true));
@@ -111,11 +118,13 @@ public class TransactionManager
 
     @Override
     public void stopService () throws Exception {
-        NameRegistrar.unregister (getName ());
-        for (Thread t :threads ) {
+        NameRegistrar.unregister(getName());
+
+        Thread[] tt = threads.toArray(new Thread[threads.size()]);
+        for (int i=0; i < tt.length; i++) {
             isp.out(queue, Boolean.FALSE, 60 * 1000);
         }
-        for (Thread thread :threads ) {
+        for (Thread thread : tt) {
             try {
                 thread.join (60*1000);
                 threads.remove(thread);
@@ -130,7 +139,7 @@ public class TransactionManager
         isp.out(queue, context);
     }
     public void push (Serializable context) {
-        isp.push (queue, context);
+        isp.push(queue, context);
     }
     @SuppressWarnings("unused")
     public String getQueueName() {
@@ -159,15 +168,13 @@ public class TransactionManager
         long startTime = 0L;
         boolean paused;
         Thread thread = Thread.currentThread();
-        synchronized (threads) {
-            if (threads.size() < maxSessions) {
-                threads.add(thread);
-                session = threads.indexOf(thread);
-                activeSessions++;
-            } else {
-                getLog().warn ("Max sessions reached, new session not created");
-                return;              
-            }
+        if (threads.size() < maxSessions) {
+            threads.add(thread);
+            session = threads.indexOf(thread);
+            activeSessions.incrementAndGet();
+        } else {
+            getLog().warn ("Max sessions reached, new session not created");
+            return;
         }
         getLog().info ("start " + thread);
         while (running()) {
@@ -192,7 +199,6 @@ public class TransactionManager
                 if (session < sessions && // only initial sessions create extra sessions
                     maxSessions > sessions &&
                     getActiveSessions() < maxSessions &&
-                    id % sessions == 0 &&
                     getOutstandingTransactions() > threshold)
                 {
                         new Thread(this).start();
@@ -247,10 +253,14 @@ public class TransactionManager
                     );
                     if (prof == null)
                         prof = new Profiler();
+                    else
+                        prof.checkPoint("resume");
                     startTime = System.currentTimeMillis();
                 }
                 snapshot (id, context, PREPARING);
+                setThreadLocal(id, context);
                 int action = prepare (session, id, context, members, iter, abort, evt, prof);
+                removeThreadLocal();
                 switch (action) {
                     case PAUSE:
                         paused = true;
@@ -259,10 +269,14 @@ public class TransactionManager
                         break;
                     case PREPARED:
                         setState (id, COMMITTING);
+                        setThreadLocal(id, context);
                         commit (session, id, context, members, false, evt, prof);
+                        removeThreadLocal();
                         break;
                     case ABORTED:
+                        setThreadLocal(id, context);
                         abort (session, id, context, members, false, evt, prof);
+                        removeThreadLocal();
                         break;
                     case RETRY:
                         psp.out (RETRY_QUEUE, context);
@@ -275,6 +289,8 @@ public class TransactionManager
                     snapshot (id, null, DONE);
                     if (id == tail) {
                         checkTail ();
+                    } else {
+                        purge (id, false);
                     }
                     tps.tick();
                 }
@@ -284,20 +300,25 @@ public class TransactionManager
                 else
                     evt.addMessage (t);
             } finally {
+                removeThreadLocal();
                 if (hasStatusListeners) {
                     notifyStatusListeners (
                         session,
                         paused ? TransactionStatusEvent.State.PAUSED : TransactionStatusEvent.State.DONE, 
                         id, "", context);
                 }
-
+                if (getInTransit() > Math.max(maxActiveSessions, activeSessions.get()) * 100) {
+                    if (evt == null)
+                        evt = getLog().createLogEvent ("warn");
+                    evt.addMessage("WARNING: IN-TRANSIT TOO HIGH");
+                }
                 if (evt != null) {
                     evt.addMessage (
-                        String.format ("head=%d, tail=%d, outstanding=%d, active-sessions=%d/%d, %s, elapsed=%dms",
-                            head, tail, getOutstandingTransactions(),
+                        String.format ("in-transit=%d, head=%d, tail=%d, outstanding=%d, active-sessions=%d/%d, %s, elapsed=%dms",
+                            getInTransit(), head, tail, getOutstandingTransactions(),
                             getActiveSessions(), maxSessions,
                             tps.toString(),
-                            (System.currentTimeMillis() - startTime)
+                                System.currentTimeMillis() - startTime
                         )
                     );
                     if (prof != null)
@@ -307,11 +328,9 @@ public class TransactionManager
                 }
             }
         }
-        synchronized (threads) {
-            threads.remove(thread);
-            activeSessions--;
-            getLog().info ("stop " + Thread.currentThread() + ", active sessions=" + activeSessions);
-        }
+        threads.remove(thread);
+        int currentActiveSessions = activeSessions.decrementAndGet();
+        getLog().info ("stop " + Thread.currentThread() + ", active sessions=" + currentActiveSessions);
     }
 
     @Override
@@ -363,7 +382,7 @@ public class TransactionManager
     }
     public void removeListener (TransactionStatusListener l) {
         synchronized (statusListeners) {
-            statusListeners.remove (l);
+            statusListeners.remove(l);
             hasStatusListeners = !statusListeners.isEmpty();
         }
     }
@@ -436,7 +455,7 @@ public class TransactionManager
                     session, TransactionStatusEvent.State.ABORTING, id, p.getClass().getName(), context
                 );
 
-            abort (p, id, context);
+            abort(p, id, context);
             if (evt != null) {
                 evt.addMessage ("          abort: " + p.getClass().getName());
                 if (prof != null)
@@ -473,7 +492,7 @@ public class TransactionManager
     {
         try {
             setThreadName(id, "commit", p);
-            p.commit (id, context);
+            p.commit(id, context);
         } catch (Throwable t) {
             getLog().warn ("COMMIT: " + Long.toString (id), t);
         }
@@ -483,7 +502,7 @@ public class TransactionManager
     {
         try {
             setThreadName(id, "abort", p);
-            p.abort (id, context);
+            p.abort(id, context);
         } catch (Throwable t) {
             getLog().warn ("ABORT: " + Long.toString (id), t);
         }
@@ -508,8 +527,11 @@ public class TransactionManager
                         session, TransactionStatusEvent.State.PREPARING_FOR_ABORT, id, p.getClass().getName(), context
                     );
                 action = prepareForAbort (p, id, context);
-                if (evt != null && (p instanceof AbortParticipant))
-                    evt.addMessage ("prepareForAbort: " + p.getClass().getName());
+                if (evt != null && p instanceof AbortParticipant) {
+                    evt.addMessage("prepareForAbort: " + p.getClass().getName());
+                    if (prof != null)
+                        prof.checkPoint ("prepareForAbort: " + p.getClass().getName());
+                }
             } else {
                 if (hasStatusListeners)
                     notifyStatusListeners (
@@ -593,8 +615,8 @@ public class TransactionManager
                 return PAUSE;
             }
         }
-        return members.isEmpty() ? NO_JOIN : 
-            (abort ? (retry ? RETRY : ABORTED) : PREPARED);
+        return members.isEmpty() ? NO_JOIN :
+                abort ? retry ? RETRY : ABORTED : PREPARED;
     }
     protected List<TransactionParticipant> getParticipants (String groupName) {
         List<TransactionParticipant> participants = groups.get (groupName);
@@ -670,7 +692,7 @@ public class TransactionManager
     @Override
     public int getOutstandingTransactions() {
         if (isp instanceof LocalSpace)
-            return ((LocalSpace)sp).size(queue);
+            return ((LocalSpace)isp).size(queue);
         return -1;
     }
     protected String getKey (String prefix, long id) {
@@ -690,14 +712,14 @@ public class TransactionManager
     }
     protected void commitOff (Space sp) {
         if (sp instanceof JDBMSpace) {
-            ((JDBMSpace) sp).setAutoCommit (false);
+            ((JDBMSpace) sp).setAutoCommit(false);
         }
     }
     protected void commitOn (Space sp) {
         if (sp instanceof JDBMSpace) {
             JDBMSpace jsp = (JDBMSpace) sp;
             jsp.commit ();
-            jsp.setAutoCommit (true);
+            jsp.setAutoCommit(true);
         }
     }
     protected void syncTail () {
@@ -721,12 +743,12 @@ public class TransactionManager
             tail++;
         }
         syncTail ();
-        sp.out (tailLock, lock);
+        sp.out(tailLock, lock);
     }
     protected boolean tailDone () {
-        String stateKey = getKey (STATE, tail);
+        String stateKey = getKey(STATE, tail);
         if (DONE.equals (psp.rdp (stateKey))) {
-            purge (tail);
+            purge (tail, true);
             return true;
         }
         return false;
@@ -774,18 +796,20 @@ public class TransactionManager
         if (groupName != null)
             psp.out (getKey (GROUPS, id), groupName);
     }
-    protected void purge (long id) {
+    protected void purge (long id, boolean full) {
         String stateKey   = getKey (STATE, id);
         String contextKey = getKey (CONTEXT, id);
         String groupsKey  = getKey (GROUPS, id);
         synchronized (psp) {
             commitOff (psp);
-            SpaceUtil.wipe(psp, stateKey);
+            if (full)
+                SpaceUtil.wipe(psp, stateKey);
             SpaceUtil.wipe(psp, contextKey);
             SpaceUtil.wipe(psp, groupsKey);
             commitOn (psp);
         }
     }
+
     protected void recover () {
         if (doRecover) {
             if (tail < head) {
@@ -822,7 +846,7 @@ public class TransactionManager
             } else if (PREPARING.equals (state)) {
                 abort (session, id, context, getParticipants (id), true, evt, prof);
             }
-            purge (id);
+            purge (id, true);
         } finally {
             evt.addMessage (prof);
             Logger.log (evt);
@@ -876,10 +900,20 @@ public class TransactionManager
 
     @Override
     public int getActiveSessions() {
-        return activeSessions;
+        return activeSessions.intValue();
     }
     public int getRunningSessions() {
         return (int) (head - tail);
+    }
+
+    public static Serializable getSerializable() {
+        return tlContext.get();
+    }
+    public static Context getContext() {
+        return (Context) tlContext.get();
+    }
+    public static Long getId() {
+        return tlId.get();
     }
     private void notifyStatusListeners
             (int session, TransactionStatusEvent.State state, long id, String info, Serializable context)
@@ -893,7 +927,16 @@ public class TransactionManager
     }
     private void setThreadName (long id, String method, TransactionParticipant p) {
         Thread.currentThread().setName(
-            String.format("%s:%d %s %s", getName(), id, method, p.getClass().getName())
+            String.format("%s:%d %s %s %s", getName(), id, method, p.getClass().getName(), 
+                LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()))
         );
+    }
+    private void setThreadLocal (long id, Serializable context) {
+        tlId.set(id);
+        tlContext.set(context);
+    }
+    private void removeThreadLocal() {
+        tlId.remove();
+        tlContext.remove();
     }
 }

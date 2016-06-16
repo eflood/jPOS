@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -63,13 +63,13 @@ public class SHOWNR implements CLICommand
     {
         NameRegistrar nr = NameRegistrar.getInstance();
         int maxw = 0;
-        Iterator iter = nr.getMap().entrySet().iterator();
+        Iterator iter = NameRegistrar.getAsMap().entrySet().iterator();
         while (iter.hasNext())
         {
             Map.Entry entry = (Map.Entry) iter.next();
             maxw = Math.max(maxw, entry.getKey().toString().length());
         }
-        iter = nr.getMap().entrySet().iterator();
+        iter = NameRegistrar.getAsMap().entrySet().iterator();
         maxw++;
         while (iter.hasNext())
         {

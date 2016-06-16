@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,7 +30,7 @@ public interface MUX extends ISOSource {
      * @return received message or null
      * @throws ISOException
      */
-    public ISOMsg request (ISOMsg m, long timeout) throws ISOException;
+    ISOMsg request(ISOMsg m, long timeout) throws ISOException;
 
     /**
      * Sends a message to remote host in async way
@@ -40,6 +40,6 @@ public interface MUX extends ISOSource {
      * @param handBack optional handback to be given to reponse listener
      * @throws ISOException
      */
-    public void request (ISOMsg m, long timeout, ISOResponseListener r, Object handBack)
+    void request(ISOMsg m, long timeout, ISOResponseListener r, Object handBack)
         throws ISOException;
 }

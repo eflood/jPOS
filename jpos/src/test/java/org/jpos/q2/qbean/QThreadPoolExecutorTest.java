@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,9 +34,9 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.jdom.DataConversionException;
-import org.jdom.Document;
-import org.jdom.input.SAXBuilder;
+import org.jdom2.DataConversionException;
+import org.jdom2.Document;
+import org.jdom2.input.SAXBuilder;
 import org.jpos.core.ConfigurationException;
 import org.jpos.util.Log;
 import org.jpos.util.NameRegistrar;
@@ -92,12 +92,12 @@ public class QThreadPoolExecutorTest {
         qbeanConfigBos = new ByteArrayOutputStream();
         qbeanConfigPw = new PrintWriter(new OutputStreamWriter(qbeanConfigBos));
 
-        NameRegistrar.getMap().clear();
+        NameRegistrar.getAsMap().clear();
     }
 
     @After
     public void tearDown() {
-        NameRegistrar.getMap().clear();
+        NameRegistrar.getAsMap().clear();
         if (null != executor) {
             try {
                 executor.shutdownNow();

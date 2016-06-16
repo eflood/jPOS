@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,12 +27,21 @@ import org.jpos.util.Loggeable;
 import org.jpos.util.Logger;
 import org.jpos.util.NameRegistrar;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import javax.management.MBeanServerConnection;
+import java.io.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.RuntimeMXBean;
+import java.lang.management.ThreadMXBean;
 import java.net.InetAddress;
 import java.nio.charset.Charset;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.TextStyle;
+import java.time.zone.ZoneOffsetTransition;
+import java.time.zone.ZoneOffsetTransitionRule;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Periodically dumps Thread and memory usage
@@ -111,8 +120,8 @@ public class SystemMonitor extends QBeanSupport
             try {
                 long expected = System.currentTimeMillis() + sleepTime;
                 Thread.sleep(sleepTime);
-                delay = (System.currentTimeMillis() - expected);
-            } catch (InterruptedException e) {
+                delay = System.currentTimeMillis() - expected;
+            } catch (InterruptedException ignored) {
             }
         }
     }
@@ -148,7 +157,7 @@ public class SystemMonitor extends QBeanSupport
     }
 
     private String getRevision() {
-        return getServer().getRevision();
+        return Q2.getRevision();
     }
     private String getLocalHost () {
         try {
@@ -158,24 +167,56 @@ public class SystemMonitor extends QBeanSupport
         }
     }
     private String generateFrozenDump(String indent) {
+        RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+        ThreadMXBean mxBean = ManagementFactory.getThreadMXBean();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream p = new PrintStream(baos);
         String newIndent = indent + "  ";
         Runtime r = getRuntimeInstance();
-        p.printf ("%s           OS: %s%n", indent, System.getProperty("os.name"));
+        ZoneId zi = ZoneId.systemDefault();
+        Instant instant = Instant.now();
+
+        File cwd = new File(".");
+
+        String freeSpace = ISOUtil.readableFileSize(cwd.getFreeSpace());
+        String usableSpace = ISOUtil.readableFileSize(cwd.getUsableSpace());
+
+        p.printf ("%s           OS: %s (%s)%n", indent, System.getProperty("os.name"), System.getProperty("os.version"));
+        p.printf ("%s process name: %s%n", indent, runtimeMXBean.getName());
         p.printf ("%s         host: %s%n", indent, getLocalHost());
+        p.printf ("%s          cwd: %s%n", indent, System.getProperty("user.dir"));
+        p.printf ("%s   free space: %s%n", indent, freeSpace);
+        if (!freeSpace.equals(usableSpace))
+            p.printf ("%s usable space: %s%n", indent, usableSpace);
         p.printf ("%s      version: %s (%s)%n", indent, Q2.getVersion(), getRevision());
         p.printf ("%s     instance: %s%n", indent, getInstanceIdAsString());
-        p.printf ("%s       uptime: %s%n", indent, ISOUtil.millisToString(getServerUptimeAsMillisecond()));
+        p.printf ("%s       uptime: %s (%f)%n", indent, ISOUtil.millisToString(getServerUptimeAsMillisecond()), loadAverage());
         p.printf ("%s   processors: %d%n", indent, r.availableProcessors());
         p.printf ("%s       drift : %d%n", indent, delay);
         p.printf ("%smemory(t/u/f): %d/%d/%d%n", indent,
                 r.totalMemory()/MB, (r.totalMemory() - r.freeMemory())/MB, r.freeMemory()/MB);
+        p.printf("%s     encoding: %s%n", indent, Charset.defaultCharset());
+        p.printf("%s     timezone: %s (%s) %s%n", indent, zi,
+                zi.getDisplayName(TextStyle.FULL, Locale.getDefault()),
+                zi.getRules().getOffset(instant).toString());
+        p.printf("%swatch service: %s%n", indent, getServer().getWatchServiceClassname());
+        List<ZoneOffsetTransitionRule> l = zi.getRules().getTransitionRules();
+        for (ZoneOffsetTransitionRule tr : l) {
+            p.printf("%s         rule: %s%n", indent, tr.toString());
+        }
+        ZoneOffsetTransition tran = zi.getRules().nextTransition(instant);
+        if (tran != null) {
+            Instant in = tran.getInstant();
+            p.printf("%s   transition: %s (%s)%n", indent, in, in.atZone(zi));
+        }
+        p.printf("%s        clock: %d %s%n", indent, System.currentTimeMillis() / 1000L, instant);
         if (hasSecurityManager())
             p.printf("%s  sec-manager: %s%n", indent, getSecurityManager());
-        p.printf("%s      threads: %d%n", indent, Thread.activeCount());
+        p.printf("%s thread count: %d%n", indent, mxBean.getThreadCount());
+        p.printf("%s peak threads: %d%n", indent, mxBean.getPeakThreadCount());
+        p.printf("%s user threads: %d%n", indent, Thread.activeCount());
+
         showThreadGroup(Thread.currentThread().getThreadGroup(), p, newIndent);
-        p.printf("%s     encoding: %s%n", indent, Charset.defaultCharset());
         NameRegistrar.getInstance().dump(p, indent, detailRequired);
         for (String s : scripts) {
             p.printf("%s%s:%n", indent, s);
@@ -194,5 +235,16 @@ public class SystemMonitor extends QBeanSupport
         } catch (Exception e) {
             e.printStackTrace(ps);
         }
+    }
+
+    private double loadAverage () {
+        MBeanServerConnection mbsc = ManagementFactory.getPlatformMBeanServer();
+        try {
+            OperatingSystemMXBean osMBean = ManagementFactory.newPlatformMXBeanProxy(
+              mbsc, ManagementFactory.OPERATING_SYSTEM_MXBEAN_NAME, OperatingSystemMXBean.class);
+
+            return osMBean.getSystemLoadAverage();
+        } catch (Throwable ignored) { }
+        return -1;
     }
 }

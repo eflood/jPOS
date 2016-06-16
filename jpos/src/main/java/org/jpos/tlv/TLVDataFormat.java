@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,16 +23,16 @@ package org.jpos.tlv;
  * @author Vishnu Pillai
  */
 public enum TLVDataFormat {
-    CONSTRUCTED,
+    ASCII_NUMERIC,
+    ASCII_ALPHA,
+    ASCII_ALPHA_NUMERIC,
+    ASCII_ALPHA_NUMERIC_SPACE,
+    ASCII_ALPHA_NUMERIC_SPECIAL,
     BINARY,
     COMPRESSED_NUMERIC,
-    NUMERIC,
-    DATE_YYMMDD,
-    ALPHA,
-    ALPHA_NUMERIC,
-    ALPHA_NUMERIC_SPACE,
-    ALPHA_NUMERIC_SPECIAL,
-    CARD_NUMBER,
-    TIME_HHMMSS,
-    PROPRIETARY;
+    CONSTRUCTED,
+    PACKED_NUMERIC,
+    PACKED_NUMERIC_DATE_YYMMDD,
+    PACKED_NUMERIC_TIME_HHMMSS,
+    PROPRIETARY
 }

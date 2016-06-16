@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,13 +23,11 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.space.SpaceError;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
-
-;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SpaceLetTest {

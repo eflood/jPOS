@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -24,7 +24,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.iso.Connector;
 import org.jpos.iso.ISOMsg;
 import org.jpos.iso.ISORequestListener;
@@ -114,8 +114,7 @@ public class QMUXTest {
 
     @Test
     public void testIsConnected() throws Throwable {
-        boolean result = new QMUX().isConnected();
-        assertTrue("result", result);
+        assertFalse("result", new QMUX().isConnected()); // MUX was not started
     }
 
     @Test

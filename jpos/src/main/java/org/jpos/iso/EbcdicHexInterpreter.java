@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -59,8 +59,8 @@ public class EbcdicHexInterpreter implements BinaryInterpreter
         	//TODO: what if the data is not EBCDIC? validation is required.
             byte hi = rawData[offset + i * 2];
             byte lo = rawData[offset + i * 2 + 1];
-            int h = hi < 0xF0 ? 10 + hi - 0xC0 : hi - 0xF0;
-            int l = lo < 0xF0 ? 10 + lo - 0xC0 : lo - 0xF0;
+            int h = hi < (byte) 0xF0 ? 10 + hi - 0xC0 : hi - 0xF0;
+            int l = lo < (byte) 0xF0 ? 10 + lo - 0xC0 : lo - 0xF0;
             ret[i] = (byte)(h << 4 | l);
         }
         return ret;

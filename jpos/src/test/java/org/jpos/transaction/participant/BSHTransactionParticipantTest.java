@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -35,7 +35,7 @@ import java.io.FileNotFoundException;
 import java.io.NotActiveException;
 import java.io.UnsupportedEncodingException;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.util.LogEvent;
 import org.junit.Test;

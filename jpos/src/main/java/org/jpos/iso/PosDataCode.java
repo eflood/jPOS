@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,19 +18,25 @@
 
 package org.jpos.iso;
 
+import java.io.PrintStream;
+import org.jpos.util.Loggeable;
+
 @SuppressWarnings("unused")
-public class PosDataCode {
+public class PosDataCode implements Loggeable {
+
     public enum ReadingMethod {
         UNKNOWN                (1, "Unknown"),
-        INFO_NOT_FROM_CARD     (1 << 1, "Information not taken from card"),
-        PHYSICAL               (1 << 2, "Physical entry"),
+        INFO_NOT_FROM_CARD     (1 << 1, "Information not taken from card"),  // i.e.: RFID
+        PHYSICAL               (1 << 2, "Physical entry"),                   // i.e.: Manual Entry or OCR
         BARCODE                (1 << 3, "Bar code"),
         MAGNETIC_STRIPE        (1 << 4, "Magnetic Stripe"),
         ICC                    (1 << 5, "ICC"),
         DATA_ON_FILE           (1 << 6, "Data on file"),
         ICC_FAILED             (1 << 11, "ICC read but failed"),
         MAGNETIC_STRIPE_FAILED (1 << 12, "Magnetic Stripe read but failed"),
-        FALLBACK               (1 << 13, "Fallback");
+        FALLBACK               (1 << 13, "Fallback"),
+        TRACK1_PRESENT         (1 << 27, "Track1 data present"), // jCard private field
+        TRACK2_PRESENT         (1 << 28, "Track2 data present"); // jCard private field
 
         private int val;
         private String description;
@@ -167,7 +173,7 @@ public class PosDataCode {
         b[15] = (byte) (securityCharacteristic >>> 24);
     }
 
-    public PosDataCode (byte[] b) {
+    private PosDataCode (byte[] b) {
         this.b = b;
     }
 
@@ -204,5 +210,49 @@ public class PosDataCode {
     }
     public String toString() {
         return super.toString() + "[" + ISOUtil.hexString (getBytes())+ "]";
+    }
+    public static PosDataCode valueOf (byte[] b) {
+        return new PosDataCode(b);  // we create new objects for now, but may return cached instances in the future
+    }
+    public void dump(PrintStream p, String indent) {
+        String inner = indent + "  ";
+        StringBuilder sb = new StringBuilder();
+        p.printf("%s<pdc value='%s'>%s%n", indent, ISOUtil.hexString(getBytes()), sb.toString());
+        for (ReadingMethod m : ReadingMethod.values()) {
+            if (hasReadingMethod(m)) {
+                if (sb.length() > 0)
+                    sb.append(',');
+                sb.append(m.name());
+            }
+        }
+        p.printf ("%srm: %s%n", inner, sb.toString());
+        sb = new StringBuilder();
+        for (VerificationMethod m : VerificationMethod.values()) {
+            if (hasVerificationMethod(m)) {
+                if (sb.length() > 0)
+                    sb.append(',');
+                sb.append(m.name());
+            }
+        }
+        p.printf ("%svm: %s%n", inner, sb.toString());
+        sb = new StringBuilder();
+        for (POSEnvironment m : POSEnvironment.values()) {
+            if (hasPosEnvironment(m)) {
+                if (sb.length() > 0)
+                    sb.append(',');
+                sb.append(m.name());
+            }
+        }
+        p.printf ("%spe: %s%n", inner, sb.toString());
+        sb = new StringBuilder();
+        for (SecurityCharacteristic m : SecurityCharacteristic.values()) {
+            if (hasSecurityCharacteristic(m)) {
+                if (sb.length() > 0)
+                    sb.append(',');
+                sb.append(m.name());
+            }
+        }
+        p.printf ("%ssc: %s%n", inner, sb.toString());
+        p.println("</pdc>");
     }
 }

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -61,6 +61,7 @@ public class GenericSSLSocketFactory
     private boolean clientAuthNeeded=false;
     private boolean serverAuthNeeded=false;
     private String[] enabledCipherSuites;
+    private String[] enabledProtocols;
 
     private Configuration cfg;
 
@@ -188,6 +189,9 @@ public class GenericSSLSocketFactory
         serverSocket.setNeedClientAuth(clientAuthNeeded);
         if (enabledCipherSuites != null && enabledCipherSuites.length > 0) {
             serverSocket.setEnabledCipherSuites(enabledCipherSuites);
+        }
+        if (enabledProtocols != null && enabledProtocols.length > 0) {
+            serverSocket.setEnabledProtocols(enabledProtocols);
         }
         return socket;
     }
@@ -340,9 +344,9 @@ public class GenericSSLSocketFactory
         password = cfg.get("storepassword", null);
         keyPassword = cfg.get("keypassword", null);
         enabledCipherSuites = cfg.getAll("addEnabledCipherSuite");
+        enabledProtocols = cfg.getAll("addEnabledProtocol");
     }
     public Configuration getConfiguration() {
         return cfg;
     }
 }
-

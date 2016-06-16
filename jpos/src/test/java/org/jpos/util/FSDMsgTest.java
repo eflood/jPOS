@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,7 +37,7 @@ import java.net.MalformedURLException;
 import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOUtil;
 import org.jpos.space.SpaceFactory;
@@ -380,48 +380,28 @@ public class FSDMsgTest {
         assertEquals("result.size()", 0, result.size());
     }
 
-    @Test
+    @Test( expected = MalformedURLException.class)
     public void testGetSchemaThrowsMalformedURLException() throws Throwable {
         FSDMsg fSDMsg = new FSDMsg("testFSDMsgBasePath", "testFSDMsgBaseSchema");
-        try {
-            fSDMsg.getSchema();
-            fail("Expected MalformedURLException to be thrown");
-        } catch (MalformedURLException ex) {
-            assertEquals("ex.getClass()", MalformedURLException.class, ex.getClass());
-        }
+        fSDMsg.getSchema();
     }
 
-    @Test
+    @Test( expected = MalformedURLException.class)
     public void testGetSchemaThrowsMalformedURLException1() throws Throwable {
         FSDMsg fSDMsg = new FSDMsg("testFSDMsgBasePath", "testFSDMsgBaseSchema");
-        try {
-            fSDMsg.getSchema("testFSDMsgMessage");
-            fail("Expected MalformedURLException to be thrown");
-        } catch (MalformedURLException ex) {
-            assertEquals("ex.getClass()", MalformedURLException.class, ex.getClass());
-        }
+        fSDMsg.getSchema("testFSDMsgMessage");
     }
 
-    @Test
+    @Test( expected = NullPointerException.class)
     public void testGetSchemaThrowsNullPointerException() throws Throwable {
         FSDMsg fSDMsg = new FSDMsg(null, "testFSDMsgBaseSchema");
-        try {
-            fSDMsg.getSchema();
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
+        fSDMsg.getSchema();
     }
 
-    @Test
+    @Test( expected = NullPointerException.class)
     public void testGetSchemaThrowsNullPointerException1() throws Throwable {
         FSDMsg fSDMsg = new FSDMsg(null, "testFSDMsgBaseSchema");
-        try {
-            fSDMsg.getSchema("testFSDMsgMessage");
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
+        fSDMsg.getSchema("testFSDMsgMessage");
     }
 
     @Test
@@ -840,18 +820,14 @@ public class FSDMsgTest {
         }
     }
 
-    @Test
+    @Test( expected = EOFException.class)
     public void testReadThrowsEOFException() throws Throwable {
         FSDMsg fSDMsg = new FSDMsg("testFSDMsgBasePath");
         when(is.read(new char[] { (char) 00 })).thenReturn(Integer.valueOf(1));
         when(is.read(new char[] { (char) 00 })).thenReturn(Integer.valueOf(1));
         when(is.read(new char[] { (char) 00 })).thenReturn(Integer.valueOf(-1));
-        try {
-            fSDMsg.read(is, 100, " ", null);
-            fail("Expected EOFException to be thrown");
-        } catch (EOFException ex) {
-            assertEquals("ex.getClass()", EOFException.class, ex.getClass());
-        }
+        fSDMsg.read(is, 100, " ", null);
+        fail("Expected EOFException to be thrown");
     }
 
     @Test

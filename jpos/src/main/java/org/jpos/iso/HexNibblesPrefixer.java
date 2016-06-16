@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,31 +34,29 @@ public class HexNibblesPrefixer implements Prefixer {
         this.nDigits = nDigits;
     }
 
+    @Override
     public void encodeLength(int length, byte[] b) {
         length <<= 1;
         for (int i = getPackedLength() - 1; i >= 0; i--) {
             int twoDigits = length % 100;
             length /= 100;
-            b[i] = (byte)(((twoDigits / 10) << 4) + twoDigits % 10);
+            b[i] = (byte)((twoDigits / 10 << 4) + twoDigits % 10);
         }
     }
 
+    @Override
     public int decodeLength(byte[] b, int offset) {
         int len = 0;
         for (int i = 0; i < (nDigits + 1) / 2; i++)
         {
-            len = 100 * len + ((b[offset + i] & 0xF0) >> 4) * 10 + ((b[offset + i] & 0x0F));
+            len = 100 * len + ((b[offset + i] & 0xF0) >> 4) * 10 + (b[offset + i] & 0x0F);
         }
         return len >> 1;
     }
 
-    /*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.jpos.iso.Prefixer#getLengthInBytes()
-	 */
+    @Override
     public int getPackedLength()
     {
-        return (nDigits + 1) >> 1;
+        return nDigits + 1 >> 1;
     }
 }

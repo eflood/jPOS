@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,8 +18,8 @@
 
 package org.jpos.q2.qbean;
 
-import org.jdom.Attribute;
-import org.jdom.Element;
+import org.jdom2.Attribute;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.q2.QBeanSupport;
 import org.jpos.util.NameRegistrar;
@@ -133,7 +133,7 @@ public class QThreadPoolExecutor extends QBeanSupport implements
                 try {
                     execSrv.shutdownNow();
                 } catch (Exception ee) {
-                    // Ignore
+                    getLog().warn(ee);
                 }
             }
             throw e;
@@ -182,7 +182,7 @@ public class QThreadPoolExecutor extends QBeanSupport implements
             boolean mandatory, String errDesc) throws ConfigurationException {
         Attribute attr = elt.getAttribute(attrName);
 
-        if ((null == attr) || ("".equals(attr.getValue().trim()))) {
+        if (null == attr || "".equals(attr.getValue().trim())) {
             if (mandatory) {
                 throw new ConfigurationException(String.format(
                         "'%s' attribute has not been found or is empty %s",

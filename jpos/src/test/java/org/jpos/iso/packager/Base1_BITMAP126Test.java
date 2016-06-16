@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -104,7 +104,7 @@ public class Base1_BITMAP126Test {
         Base1_BITMAP126 base1_BITMAP126 = new Base1_BITMAP126(100, "testBase1_BITMAP126Description");
         ISOComponent c = new ISOBinaryField(100);
         try {
-            base1_BITMAP126.unpack(c, (byte[]) null, 100);
+            base1_BITMAP126.unpack(c, null, 100);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

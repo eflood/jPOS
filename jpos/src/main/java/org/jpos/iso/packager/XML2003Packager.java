@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -186,7 +186,9 @@ public class XML2003Packager extends DefaultHandler
             if (id != null) {
                 try {
                     fieldNumber = Integer.parseInt (id);
-                } catch (NumberFormatException ex) { }
+                } catch (NumberFormatException ex) {
+                    throw new SAXException ("Invalid idr " + id);
+                }
             }
             if (name.equals (ISOMSG_TAG)) {
                 if (fieldNumber >= 0) {

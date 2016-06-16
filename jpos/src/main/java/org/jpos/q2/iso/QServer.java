@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,7 @@
 
 package org.jpos.q2.iso;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.ISOChannel;
 import org.jpos.iso.ISOException;
@@ -102,7 +102,7 @@ public class QServer
         }
 
         ThreadPool pool = null;
-        pool = new ThreadPool (minSessions ,maxSessions);
+        pool = new ThreadPool (minSessions ,maxSessions, getName() + "-ThreadPool");
         pool.setLogger (log.getLogger(), getName() + ".pool");
 
         server = new ISOServer (port, (ServerChannel) channel, pool);

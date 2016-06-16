@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -127,15 +127,18 @@ public class ISOStringFieldPackager extends ISOFieldPackager
     }
 
     /**
-	 * Convert the component into a byte[].
+     * Convert the component into a byte[].
+     * @return byte array representation of component
+     * @throws org.jpos.iso.ISOException
 	 */
+    @Override
     public byte[] pack(ISOComponent c) throws ISOException
     {
         try
         {
             String data;
             if(c.getValue() instanceof byte[])
-                data = new String(c.getBytes(), ISOUtil.ENCODING); // transparent handling of complex fields
+                data = new String(c.getBytes(), ISOUtil.CHARSET); // transparent handling of complex fields
             else
                 data = (String)c.getValue();
 

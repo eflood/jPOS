@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,12 +20,12 @@ package org.jpos.iso.header;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
 
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ public class BaseHeaderTest {
         baseHeader.unpack(header2);
         BaseHeader result = (BaseHeader) baseHeader.clone();
         assertEquals("result.getLength()", 1, result.getLength());
-        assertSame("baseHeader.header", header2, baseHeader.header);
+        assertTrue("baseHeader.header", Arrays.equals(header2, baseHeader.header));
     }
 
     @Test
@@ -58,7 +58,7 @@ public class BaseHeaderTest {
     public void testConstructor1() throws Throwable {
         byte[] header = new byte[3];
         BaseHeader baseHeader = new BaseHeader(header);
-        assertSame("baseHeader.header", header, baseHeader.header);
+        assertTrue("baseHeader.header", Arrays.equals(header, baseHeader.header));
     }
 
     @Test
@@ -103,7 +103,7 @@ public class BaseHeaderTest {
     public void testGetLength1() throws Throwable {
         byte[] header = new byte[0];
         BaseHeader baseHeader = new BaseHeader(header);
-        int unpack = baseHeader.unpack((byte[]) null);
+        int unpack = baseHeader.unpack(null);
         int result = baseHeader.getLength();
         assertEquals("result", unpack, result);
     }
@@ -121,7 +121,7 @@ public class BaseHeaderTest {
         byte[] header2 = new byte[3];
         baseHeader.unpack(header2);
         byte[] result = baseHeader.pack();
-        assertSame("result", header2, result);
+        assertTrue("result", Arrays.equals(header2, result));
         assertEquals("header2[0]", (byte) 0, header2[0]);
     }
 
@@ -153,7 +153,7 @@ public class BaseHeaderTest {
     public void testUnpack() throws Throwable {
         byte[] header = new byte[0];
         BaseHeader baseHeader = new BaseHeader(header);
-        int result = baseHeader.unpack((byte[]) null);
+        int result = baseHeader.unpack(null);
         assertNull("baseHeader.header", baseHeader.header);
         assertEquals("result", 0, result);
     }
@@ -164,7 +164,7 @@ public class BaseHeaderTest {
         BaseHeader baseHeader = new BaseHeader(header);
         byte[] header2 = new byte[1];
         int result = baseHeader.unpack(header2);
-        assertSame("baseHeader.header", header2, baseHeader.header);
+        assertTrue("baseHeader.header", Arrays.equals(header2, baseHeader.header));
         assertEquals("baseHeader.header[0]", (byte) 0, baseHeader.header[0]);
         assertEquals("result", 1, result);
     }

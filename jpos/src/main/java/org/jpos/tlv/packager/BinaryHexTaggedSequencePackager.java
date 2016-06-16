@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,13 +18,10 @@
 
 package org.jpos.tlv.packager;
 
-import org.jpos.core.Configuration;
-import org.jpos.core.ConfigurationException;
 import org.jpos.iso.ISOComponent;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOFieldPackager;
 import org.jpos.iso.ISOUtil;
-import org.xml.sax.Attributes;
 
 /**
  * @author Vishnu Pillai
@@ -36,19 +33,8 @@ public class BinaryHexTaggedSequencePackager extends TaggedSequencePackager {
     }
 
     @Override
-    protected void setGenericPackagerParams(Attributes atts) {
-        super.setGenericPackagerParams(atts);
-    }
-
-    @Override
-    public void setConfiguration(Configuration cfg) throws ConfigurationException {
-        super.setConfiguration(cfg);
-    }
-
-    @Override
     protected ISOFieldPackager getTagPackager() {
-        TagPackager tagPackager = new TagPackager(this.tag.length(), "Tag");
-        return tagPackager;
+        return new TagPackager(this.tag.length(), "Tag");
     }
 
     public static class TagPackager extends ISOFieldPackager {

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,8 +17,6 @@
  */
 
 package org.jpos.iso;
-
-import java.io.UnsupportedEncodingException;
 
 /**
  * ISOFieldPackager CHARACTERS (ASCII and BINARY)
@@ -52,6 +50,7 @@ public class IF_TCHAR extends IF_TBASE {
      * @return packed component
      * @exception ISOException
      */
+    @Override
     public byte[] pack (ISOComponent c) throws ISOException {
         String s = c.getValue() + getToken() ;
         return s.getBytes();
@@ -63,21 +62,19 @@ public class IF_TCHAR extends IF_TBASE {
      * @return consumed bytes
      * @exception ISOException
      */
+    @Override
     public int unpack (ISOComponent c, byte[] b, int offset)
         throws ISOException
     {
-        try {
-            String s = new String(b, ISOUtil.ENCODING);
-            int newoffset = s.indexOf( getToken() , offset );
-            c.setValue( s.substring(offset, newoffset ));
-            int len = newoffset - offset;
-            setLength( len );
-            return len + getToken().length();
-        } catch (UnsupportedEncodingException e) {
-            throw new ISOException (e);
-        }
+        String s = new String(b, ISOUtil.CHARSET);
+        int newoffset = s.indexOf( getToken() , offset );
+        c.setValue( s.substring(offset, newoffset ));
+        int len = newoffset - offset;
+        setLength( len );
+        return len + getToken().length();
     }
 
+    @Override
     public int getMaxPackedLength() {
         return getLength() + getToken().length();
     }

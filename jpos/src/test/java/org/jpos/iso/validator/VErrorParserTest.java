@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -131,7 +131,7 @@ public class VErrorParserTest {
         VErrorParser vErrorParser = new VErrorParser();
         ISOComponent c = new ISOMsg();
         Vector result = vErrorParser.getVErrors(c);
-        assertEquals("(ISOMsg) c.getMaxField()", 0, ((ISOMsg) c).getMaxField());
+        assertEquals("(ISOMsg) c.getMaxField()", 0, c.getMaxField());
         assertEquals("result.size()", 0, result.size());
     }
 

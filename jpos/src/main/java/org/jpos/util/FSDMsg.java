@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,7 @@ package org.jpos.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
-import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -36,9 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.jdom.Element;
-import org.jdom.JDOMException;
-import org.jdom.input.SAXBuilder;
+import org.jdom2.Element;
+import org.jdom2.JDOMException;
+import org.jdom2.input.SAXBuilder;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOUtil;
 import org.jpos.space.Space;
@@ -143,7 +143,7 @@ public class FSDMsg implements Loggeable, Cloneable {
         separators = new LinkedHashMap<String,Character>();
         this.basePath   = basePath;
         this.baseSchema = baseSchema;
-        charset = Charset.forName(ISOUtil.ENCODING);
+        charset = ISOUtil.CHARSET;
         readCount = 0;
         
         setSeparator("FS", FS);
@@ -182,7 +182,7 @@ public class FSDMsg implements Loggeable, Cloneable {
      */
     public void unsetSeparator(String separatorName) {
         if (!separators.containsKey(separatorName))
-            throw new RuntimeException("unsetSeparator was attempted for "+
+            throw new IllegalArgumentException("unsetSeparator was attempted for "+
                       separatorName+" which was not previously defined.");
 
         separators.remove(separatorName);
@@ -270,8 +270,8 @@ public class FSDMsg implements Loggeable, Cloneable {
                     value = defValue;
                 break;
             case 'B':
-                if ((length << 1) < value.length())
-                    throw new RuntimeException("field content=" + value
+                if (length << 1 < value.length())
+                    throw new IllegalArgumentException("field content=" + value
                             + " is too long to fit in field " + id
                             + " whose length is " + length);
 
@@ -303,18 +303,17 @@ public class FSDMsg implements Loggeable, Cloneable {
             return true;
         else if (isDummySeparator (separator))
             return true;
-        else {
+        else
             try {
                 if (Character.isDefined(Integer.parseInt(separator,16))) {
                     setSeparator(separator, (char)Long.parseLong(separator,16));
                     return true;
                 }
             } catch (NumberFormatException ignored) {
-                throw new RuntimeException("Invalid separator '"+ separator + "'");
+                throw new IllegalArgumentException("Invalid separator '"+ separator + "'");
             }
-        }
-        throw new RuntimeException("FSDMsg.isSeparated(String) found that "+
-                separator+" has not been defined as a separator!");
+        throw new IllegalArgumentException("isSeparated called on separator="+
+                      separator+" which was not previously defined.");
     }
 
     private boolean isDummySeparator(String separator) {
@@ -347,7 +346,8 @@ public class FSDMsg implements Loggeable, Cloneable {
             return 0;
         }
 
-        throw new RuntimeException("getSeparator called on separator="+separator+" which does not resolve to a known separator.");
+        throw new IllegalArgumentException("getSeparator called on separator="+
+                      separator+" which was not previously defined.");
     }
 
     protected void pack (Element schema, StringBuilder sb)
@@ -482,7 +482,7 @@ public class FSDMsg implements Loggeable, Cloneable {
                         break;
                     }
                 }
-                if (expectSeparator && (c[0] == getSeparator(separator))) {
+                if (expectSeparator && c[0] == getSeparator(separator)) {
                     separated = false;
                     break;
                 }
@@ -523,10 +523,10 @@ public class FSDMsg implements Loggeable, Cloneable {
         return header != null ? ISOUtil.hexString (header).substring (2) : "";
     }
     public String get (String fieldName) {
-        return (String) fields.get (fieldName);
+        return fields.get (fieldName);
     }
     public String get (String fieldName, String def) {
-        String s = (String) fields.get (fieldName);
+        String s = fields.get (fieldName);
         return s != null ? s : def;
     }
     public void copy (String fieldName, FSDMsg msg) {
@@ -587,27 +587,46 @@ public class FSDMsg implements Loggeable, Cloneable {
         Space sp = SpaceFactory.getSpace();
         Element schema = (Element) sp.rdp (uri);
         if (schema == null) {
-            SAXBuilder builder = new SAXBuilder ();
-            URL url = new URL (uri);
-            File f = new File(url.getFile());
-            if (f.exists()) {
-                schema = builder.build (url).getRootElement ();
-            } else if (defSuffix != null) {
+            schema = loadSchema(uri, defSuffix == null);
+            if (schema == null && defSuffix != null) {
                 sb = new StringBuilder (prefix);
                 sb.append (defSuffix);
                 sb.append (".xml");
-                url = new URL (sb.toString());
-                f = new File (url.getFile());
-                if (f.exists()) {
-                    schema = builder.build (url).getRootElement ();
-                }
-            }
-            if (schema == null){
-                throw new RuntimeException(f.getCanonicalPath() + " not found");
+                schema = loadSchema(sb.toString(), true);
             }
             sp.out (uri, schema);
         }
         return schema;
+    }
+
+    protected Element loadSchema(String uri, boolean throwex)
+        throws JDOMException, IOException {
+        SAXBuilder builder = new SAXBuilder();
+        if (uri.startsWith("jar:") && uri.length()>4) {
+            InputStream is = schemaResouceInputStream(uri.substring(4));
+            if (is == null && throwex)
+                throw new FileNotFoundException(uri + " not found");
+            else if (is != null)
+                return builder.build(is).getRootElement();
+            else
+                return null;
+        }
+
+        URL url = new URL(uri);
+        try {
+            return builder.build(url).getRootElement();
+        } catch (FileNotFoundException ex) {
+            if (throwex)
+                throw ex;
+            return null;
+        }
+    }
+
+    protected InputStream schemaResouceInputStream(String resource)
+        throws JDOMException, IOException {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        cl = cl==null ? ClassLoader.getSystemClassLoader() : cl;
+        return cl.getResourceAsStream(resource);
     }
 
     /**
@@ -619,6 +638,8 @@ public class FSDMsg implements Loggeable, Cloneable {
     public void setMap (Map fields) {
         this.fields = fields;
     }
+
+    @Override
     public void dump (PrintStream p, String indent) {
         String inner = indent + "  ";
         p.println (indent + "<fsdmsg schema='" + basePath + baseSchema  + "'>");
@@ -635,6 +656,8 @@ public class FSDMsg implements Loggeable, Cloneable {
     public boolean hasField(String fieldName) {
         return fields.containsKey(fieldName);
     }
+
+    @Override
     public Object clone() {
         try {              
             FSDMsg m = (FSDMsg) super.clone();

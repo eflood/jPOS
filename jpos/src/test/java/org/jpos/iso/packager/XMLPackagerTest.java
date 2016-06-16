@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,7 +45,6 @@ import org.junit.Test;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.ext.Attributes2Impl;
-import org.xml.sax.helpers.AttributesImpl;
 
 public class XMLPackagerTest {
     private Attributes atts;
@@ -247,7 +246,7 @@ public class XMLPackagerTest {
     @Test
     public void testStartElement1() throws Throwable {
         xMLPackager.startElement("testXMLPackagerNs", "testXMLPackagerName", "testXMLPackagerQName", atts);
-        assertEquals("(AttributesImpl) atts.getLength()", 0, ((AttributesImpl) atts).getLength());
+        assertEquals("(AttributesImpl) atts.getLength()", 0, atts.getLength());
     }
 
     @Test

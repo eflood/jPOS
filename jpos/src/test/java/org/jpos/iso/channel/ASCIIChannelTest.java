@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,6 @@ package org.jpos.iso.channel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -129,8 +128,12 @@ public class ASCIIChannelTest {
     @Test
     public void testSendMessageLength() throws Throwable {
         ASCIIChannel aSCIIChannel = new ASCIIChannel("testASCIIChannelHost", 100, new GenericPackager());
-        aSCIIChannel.sendMessageLength(Integer.MIN_VALUE);
-        assertTrue("Executed without Exception", true);
+        try {
+            aSCIIChannel.sendMessageLength(Integer.MIN_VALUE);
+            fail("IOException expected");
+        } catch (IOException ex) {
+            assertEquals("ex.getMessage()", "invalid length", ex.getMessage());
+        }
     }
 
     @Test

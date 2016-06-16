@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -41,6 +41,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Map;
 
 import org.jpos.iso.channel.LogChannel;
@@ -107,7 +108,7 @@ public class ISOMsg2Test {
     public void testCloneThrowsNullPointerException() throws Throwable {
         ISOMsg iSOMsg = new ISOMsg();
         try {
-            iSOMsg.clone((int[]) null);
+            iSOMsg.clone(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -197,7 +198,7 @@ public class ISOMsg2Test {
         ISOMsg iSOMsg = new ISOMsg();
         iSOMsg.setHeader(header2);
         byte[] result = iSOMsg.getHeader();
-        assertSame("result", header, result);
+        assertTrue (ISOUtil.hexString(header) + "/" + ISOUtil.hexString(result), Arrays.equals(header, result));
         assertEquals("header[0]", (byte) 0, header[0]);
         assertSame("iSOMsg.header", header2, iSOMsg.header);
     }
@@ -406,7 +407,7 @@ public class ISOMsg2Test {
     @Test
     public void testHasFieldsThrowsNullPointerException() throws Throwable {
         try {
-            new ISOMsg("testISOMsgMti").hasFields((int[]) null);
+            new ISOMsg("testISOMsgMti").hasFields(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

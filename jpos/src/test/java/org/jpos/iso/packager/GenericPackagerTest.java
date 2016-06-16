@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -290,7 +290,7 @@ public class GenericPackagerTest {
         } catch (SAXException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
             assertNull("ex.getException().getMessage()", ex.getException().getMessage());
-            assertEquals("(AttributesImpl) atts.getLength()", 0, ((AttributesImpl) atts).getLength());
+            assertEquals("(AttributesImpl) atts.getLength()", 0, atts.getLength());
         }
     }
 
@@ -319,7 +319,7 @@ public class GenericPackagerTest {
         } catch (SAXException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
             assertNull("ex.getException().getMessage()", ex.getException().getMessage());
-            assertEquals("(AttributesImpl) atts.getLength()", 0, ((AttributesImpl) atts).getLength());
+            assertEquals("(AttributesImpl) atts.getLength()", 0, atts.getLength());
         }
     }
 

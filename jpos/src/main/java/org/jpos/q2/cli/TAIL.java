@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -67,7 +67,9 @@ public class TAIL implements CLICommand, LogListener
                 Logger logger = (Logger) NameRegistrar.get("logger." + args[i]);
                 logger.removeListener(this);
             }
-            catch (NameRegistrar.NotFoundException e) { }
+            catch (NameRegistrar.NotFoundException ignored) {
+                // NOPMD OK to happen
+            }
         }
     }
 
@@ -100,7 +102,7 @@ public class TAIL implements CLICommand, LogListener
     {
         NameRegistrar nr = NameRegistrar.getInstance();
         int maxw = 0;
-        Iterator iter = nr.getMap().entrySet().iterator();
+        Iterator iter = NameRegistrar.getAsMap().entrySet().iterator();
         StringBuilder sb = new StringBuilder("available loggers:");
         while (iter.hasNext())
         {

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -27,12 +27,11 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import java.util.Hashtable;
-import java.util.PropertyResourceBundle;
 
 import javax.management.ObjectName;
 
-import org.jdom.Attribute;
-import org.jdom.Element;
+import org.jdom2.Attribute;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.ISOFieldValidator;
 import org.jpos.iso.IVA_ALPHANUM;
@@ -48,7 +47,7 @@ public class QFactory2Test {
         String[] args = new String[0];
         Q2 q2 = mock(Q2.class);
         QFactory qFactory = new QFactory(loaderName, q2);
-        assertTrue("qFactory.classMapping.getKeys().hasMoreElements()", ((PropertyResourceBundle) qFactory.classMapping).getKeys()
+        assertTrue("qFactory.classMapping.getKeys().hasMoreElements()", qFactory.classMapping.getKeys()
                 .hasMoreElements());
         assertSame("qFactory.loaderName", loaderName, qFactory.loaderName);
         assertSame("qFactory.q2", q2, qFactory.q2);
@@ -140,7 +139,7 @@ public class QFactory2Test {
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
-            assertTrue("qFactory.classMapping.getKeys().hasMoreElements()", ((PropertyResourceBundle) qFactory.classMapping)
+            assertTrue("qFactory.classMapping.getKeys().hasMoreElements()", qFactory.classMapping
                     .getKeys().hasMoreElements());
             assertSame("qFactory.q2", q2, qFactory.q2);
             assertEquals("e.getName()", "testQFactoryName", e.getName());
@@ -165,7 +164,7 @@ public class QFactory2Test {
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
-            assertTrue("qFactory.classMapping.getKeys().hasMoreElements()", ((PropertyResourceBundle) qFactory.classMapping)
+            assertTrue("qFactory.classMapping.getKeys().hasMoreElements()", qFactory.classMapping
                     .getKeys().hasMoreElements());
             assertSame("qFactory.q2", q2, qFactory.q2);
             assertEquals("e.getName()", "testQFactoryName", e.getName());

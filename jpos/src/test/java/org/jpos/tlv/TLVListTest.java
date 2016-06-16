@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -370,7 +370,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpack2() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("000100");;
+        byte[] buf = ISOUtil.hex2byte("000100");
         tLVList.unpack(buf);
         assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
         TLVMsg tm = tLVList.index(0);
@@ -404,7 +404,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpack6() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("6000");;
+        byte[] buf = ISOUtil.hex2byte("6000");
         tLVList.unpack(buf);
         assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
     }
@@ -425,52 +425,30 @@ public class TLVListTest {
 
     @Test
     public void testUnpack9() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("1e00");;
+        byte[] buf = ISOUtil.hex2byte("1e00");
         tLVList.unpack(buf);
         assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
     }
 
     @Test
-    public void testUnpackThrowsBufferUnderflowException() throws Throwable {
+    public void testUnpackWith0x00Padding() throws Throwable {
         byte[] buf = ISOUtil.hex2byte("fe0000");
-        exception.expect(BufferUnderflowException.class);
-        try {
-            tLVList.unpack(buf, 0);
-        } catch (BufferUnderflowException ex) {
-            assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
-            throw ex;
-        }
+        tLVList.unpack(buf, 0);
+        assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
     }
 
     @Test
-    public void testUnpackThrowsBufferUnderflowException1() throws Throwable {
+    public void testUnpackWith0x00Padding1() throws Throwable {
         byte[] buf = ISOUtil.hex2byte("878000");
-//        buf[0] = (byte) -121;
-//        buf[1] = (byte) -128;
-        exception.expect(BufferUnderflowException.class);
-        try {
-            tLVList.unpack(buf);
-        } catch (BufferUnderflowException ex) {
-            assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
-            throw ex;
-        }
-    }
-
-    @Test
-    public void testUnpackThrowsBufferUnderflowException2() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("fe0000");
-        exception.expect(BufferUnderflowException.class);
-        try {
-            tLVList.unpack(buf);
-        } catch (BufferUnderflowException ex) {
-            assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
-            throw ex;
-        }
+        // buf[0] = (byte) -121;
+        // buf[1] = (byte) -128;
+        tLVList.unpack(buf);
+        assertTrue("tLVList.elements().hasMoreElements()", tLVList.elements().hasMoreElements());
     }
 
     @Test
     public void testUnpackThrowsBufferUnderflowException3() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("007f");;
+        byte[] buf = ISOUtil.hex2byte("007f");
         exception.expect(BufferUnderflowException.class);
         try {
             tLVList.unpack(buf);
@@ -495,7 +473,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpackThrowsISOException() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("00ff80");;
+        byte[] buf = ISOUtil.hex2byte("00ff80");
         exception.expect(ISOException.class);
         exception.expectMessage(String.format(ISO_EXCEPT_WITHOUT_LEN, 0x80));
         try {
@@ -509,7 +487,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpackThrowsISOException1() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("001e");;
+        byte[] buf = ISOUtil.hex2byte("001e");
         exception.expect(ISOException.class);
         exception.expectMessage(String.format(ISO_EXCEPT_WITHOUT_LEN, 0x1e));
         try {
@@ -523,7 +501,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpackThrowsISOException10() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("7f0007");;
+        byte[] buf = ISOUtil.hex2byte("7f0007");
         exception.expect(ISOException.class);
         exception.expectMessage(String.format(ISO_EXCEPT_EXCEEDS_AVAL, 0x7f00, 0x07));
         try {
@@ -537,7 +515,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpackThrowsISOException11() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("ff1e");;
+        byte[] buf = ISOUtil.hex2byte("ff1e");
         exception.expect(ISOException.class);
         exception.expectMessage(String.format(ISO_EXCEPT_WITHOUT_LEN, 0x1e));
         try {
@@ -579,7 +557,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpackThrowsISOException14() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("7f00");;
+        byte[] buf = ISOUtil.hex2byte("7f00");
         exception.expect(ISOException.class);
         exception.expectMessage(String.format(ISO_EXCEPT_WITHOUT_LEN, 0x7f00));
         try {
@@ -593,7 +571,7 @@ public class TLVListTest {
 
     @Test
     public void testUnpackThrowsISOException15() throws Throwable {
-        byte[] buf = ISOUtil.hex2byte("f8");;
+        byte[] buf = ISOUtil.hex2byte("f8");
         exception.expect(ISOException.class);
         exception.expectMessage(String.format(ISO_EXCEPT_WITHOUT_LEN, 0xf8));
         try {
@@ -761,11 +739,11 @@ public class TLVListTest {
 
     @Test(expected = NullPointerException.class)
     public void testUnpackThrowsNullPointerException() throws Throwable {
-        tLVList.unpack((byte[]) null, 100);
+        tLVList.unpack(null, 100);
     }
 
     @Test(expected = NullPointerException.class)
     public void testUnpackThrowsNullPointerException1() throws Throwable {
-        tLVList.unpack((byte[]) null);
+        tLVList.unpack(null);
     }
 }

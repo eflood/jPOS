@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,7 +26,7 @@ import static org.junit.Assert.fail;
 import java.io.EOFException;
 import java.io.StreamCorruptedException;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.junit.Test;
 

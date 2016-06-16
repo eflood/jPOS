@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -43,6 +43,8 @@ public class VAPChannel extends BaseChannel {
     String dstid = "000000";
     boolean debugPoll;
     int headerFormat = 2;
+    private boolean replyKeepAlive = true;
+
     /**
      * Public constructor (used by Class.forName("...").newInstance())
      */
@@ -159,7 +161,7 @@ public class VAPChannel extends BaseChannel {
     protected void sendMessageHeader(ISOMsg m, int len) 
         throws IOException
     {
-        ISOHeader h = (!isOverrideHeader() && m.getHeader() != null) ?
+        ISOHeader h = !isOverrideHeader() && m.getHeader() != null ?
                 m.getISOHeader() :
                 new BASE1Header (srcid, dstid, headerFormat);
 
@@ -174,12 +176,15 @@ public class VAPChannel extends BaseChannel {
         // ignore VAP polls (0 message length)
         while (l == 0) {
             serverIn.readFully(b,0,4);
-            l = ((((int)b[0])&0xFF) << 8) | (((int)b[1])&0xFF);
-            if (l == 0) {
-                serverOut.write(b);
-                serverOut.flush();
-                if (debugPoll)
-                    Logger.log (new LogEvent (this, "poll"));
+            l = ((int)b[0] &0xFF) << 8 | (int)b[1] &0xFF;
+
+            if (replyKeepAlive && l == 0) {
+                synchronized (serverOutLock) {
+                    serverOut.write(b);
+                    serverOut.flush();
+                    if (debugPoll)
+                        Logger.log(new LogEvent(this, "poll"));
+                }
             }
         }
         return l;
@@ -191,7 +196,7 @@ public class VAPChannel extends BaseChannel {
         
     protected boolean isRejected(byte[] b) {
         BASE1Header h = new BASE1Header(b);
-        return h.isRejected() || (h.getHLen() != BASE1Header.LENGTH);
+        return h.isRejected() || h.getHLen() != BASE1Header.LENGTH;
     }
 
     protected boolean shouldIgnore (byte[] b) {
@@ -226,10 +231,11 @@ public class VAPChannel extends BaseChannel {
     public void setConfiguration (Configuration cfg)
         throws ConfigurationException 
     {
+        super.setConfiguration (cfg);
         srcid = cfg.get ("srcid", "000000");
         dstid = cfg.get ("dstid", "000000");
         debugPoll = cfg.getBoolean("debug-poll", false);
         headerFormat = cfg.getInt("header-format", 2);
-        super.setConfiguration (cfg);
+        replyKeepAlive = cfg.getBoolean("reply-keepalive", true);
     }
 }

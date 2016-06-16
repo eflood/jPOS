@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,7 +22,6 @@ import org.jpos.core.Configurable;
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.ISOException;
-import org.jpos.iso.ISOUtil;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
@@ -66,6 +65,7 @@ public class DirPoll extends SimpleLogSource
     private String responseSuffix;
     private ThreadPool pool;
     private Object processor;
+    private final Object shutdownMonitor = new Object();
 
     private boolean shutdown;
     private boolean paused = false;
@@ -233,8 +233,8 @@ public class DirPoll extends SimpleLogSource
     //--------------------------------------- FilenameFilter implementation
     public boolean accept(File dir, String name) {
         boolean result;
-        String ext = currentPriority >= 0 ? 
-            ((String) prio.elementAt(currentPriority)) : null;
+        String ext = currentPriority >= 0 ?
+                (String) prio.elementAt(currentPriority) : null;
         if (ext != null) {
             if (isRegexPriorityMatching()) {
                 if (!name.matches(ext))
@@ -248,7 +248,7 @@ public class DirPoll extends SimpleLogSource
         if (acceptZeroLength){
              result = f.isFile();
         } else {
-             result = f.isFile() && (f.length() > 0);
+             result = f.isFile() && f.length() > 0;
         }
         return result;
     }
@@ -278,19 +278,31 @@ public class DirPoll extends SimpleLogSource
                     getPool().execute (new ProcessorRunner (f));
                     Thread.yield(); // be nice
                 }
-                else
-                    Thread.sleep(pollInterval);
-            } catch (InterruptedException e) { 
+                else {
+                    synchronized (shutdownMonitor) {
+                        if (!shutdown) {
+                            shutdownMonitor.wait(pollInterval);
+                        }
+                    }
+                }
+            } catch (InterruptedException e) {
             } catch (Throwable e) {
                 Logger.log (new LogEvent (this, "dirpoll", e));
                 try {
-                    Thread.sleep(pollInterval * 10);    // anti hog
+                    synchronized (shutdownMonitor) {
+                        if (!shutdown) {
+                            shutdownMonitor.wait(pollInterval * 10);
+                        }
+                    }
                 } catch (InterruptedException ex) { }
             }
-        }   
+        }
     }
     public void destroy () {
-        shutdown = true;
+        synchronized (shutdownMonitor) {
+            shutdown = true;
+            shutdownMonitor.notifyAll();
+        }
     }
 
     //----------------------------------------------------- public helpers
@@ -334,7 +346,7 @@ public class DirPoll extends SimpleLogSource
     private File moveTo(File f, File dir) throws IOException {
         File destination = new File(dir, f.getName());
         if (!f.renameTo(destination))
-            throw new IOException("Unable to move"+f.getName());
+            throw new IOException("Unable to move "+f.getName());
         return destination;
     }
 
@@ -377,7 +389,7 @@ public class DirPoll extends SimpleLogSource
          * @param request request image
          * @return response (or null)
          */
-        public byte[] process(String name, byte[] request) 
+        byte[] process(String name, byte[] request)
             throws DirPollException;
     }
     public interface FileProcessor {
@@ -385,7 +397,7 @@ public class DirPoll extends SimpleLogSource
          * @param name request File
          * @throws org.jpos.util.DirPoll.DirPollException on errors
          */
-        public void process (File name) throws DirPollException;
+        void process(File name) throws DirPollException;
     }
     public class ProcessorRunner implements Runnable {
         File request;
@@ -427,8 +439,15 @@ public class DirPoll extends SimpleLogSource
                 logEvent = evt;
                 evt.addMessage (e);
                 try {
-                    if ((e instanceof DirPollException && ((DirPollException)e).isRetry())) {
-                        ISOUtil.sleep(pollInterval*10); // retry delay (pollInterval defaults to 100ms)
+                    if (e instanceof DirPollException && ((DirPollException)e).isRetry()) {
+                        synchronized (shutdownMonitor) {
+                            if (!shutdown) {
+                                try {
+                                    shutdownMonitor.wait(pollInterval * 10); // retry delay (pollInterval defaults to 100ms)
+                                } catch (InterruptedException ie) {
+                                }
+                            }
+                        }
                         evt.addMessage("retrying");
                         moveTo(request, requestDir);
                     } else {

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -35,8 +35,8 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jdom.Comment;
-import org.jdom.Element;
+import org.jdom2.Comment;
+import org.jdom2.Element;
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
 import org.jpos.core.SimpleConfiguration;
@@ -374,8 +374,8 @@ public class TransactionManagerTest {
 
     @Test
     public void testPrepare5() throws Throwable {
-        int result = transactionManager.prepare(1, 100L, new File("testTransactionManagerParam1"), new ArrayList(), (new ArrayList(
-                1000)).iterator(), true, new LogEvent("testTransactionManagerTag"), null);
+        int result = transactionManager.prepare(1, 100L, new File("testTransactionManagerParam1"), new ArrayList(), new ArrayList(
+                1000).iterator(), true, new LogEvent("testTransactionManagerTag"), null);
         assertEquals("result", 64, result);
     }
 
@@ -474,7 +474,7 @@ public class TransactionManagerTest {
     @Test
     public void testPurgeThrowsNullPointerException() throws Throwable {
         try {
-            transactionManager.purge(100L);
+            transactionManager.purge(100L, true);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -568,21 +568,6 @@ public class TransactionManagerTest {
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
             assertNull("transactionManager.psp", transactionManager.psp);
-        }
-    }
-
-    @Test
-    public void testStartServiceThrowsNullPointerException() throws Throwable {
-        try {
-            transactionManager.startService();
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-            assertNull("transactionManager.threads", transactionManager.threads);
-            assertNull("transactionManager.getConfiguration()", transactionManager.getConfiguration());
-            assertEquals("transactionManager.tail", 0L, transactionManager.tail);
-            assertNull("transactionManager.psp", transactionManager.psp);
-            assertNull("transactionManager.groups", transactionManager.groups);
         }
     }
 

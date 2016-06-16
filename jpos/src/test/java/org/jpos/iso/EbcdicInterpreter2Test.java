@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -60,7 +60,7 @@ public class EbcdicInterpreter2Test {
     @Test
     public void testInterpretThrowsNullPointerException() throws Throwable {
         try {
-            EbcdicInterpreter.INSTANCE.interpret("testEbcdicInterpreterData", (byte[]) null, 100);
+            EbcdicInterpreter.INSTANCE.interpret("testEbcdicInterpreterData", null, 100);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -99,7 +99,7 @@ public class EbcdicInterpreter2Test {
     @Test
     public void testUninterpretThrowsNullPointerException() throws Throwable {
         try {
-            new EbcdicInterpreter().uninterpret((byte[]) null, 100, 1000);
+            new EbcdicInterpreter().uninterpret(null, 100, 1000);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

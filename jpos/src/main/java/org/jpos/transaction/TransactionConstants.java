@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,19 +20,19 @@ package org.jpos.transaction;
 
 
 public interface TransactionConstants {
-    public static final int ABORTED  = 0;
-    public static final int PREPARED = 1;
-    public static final int RETRY    = 2;
-    public static final int PAUSE    = 4;
+    int ABORTED  = 0;
+    int PREPARED = 1;
+    int RETRY    = 2;
+    int PAUSE    = 4;
 
     /**
      * This participant does not join the transaction
      */
-    public static final int NO_JOIN  = 0x40;
+    int NO_JOIN  = 0x40;
 
     /**
      * Context has not been modified (no need to persist a snapshot)
      */
-    public static final int READONLY = 0x80;
+    int READONLY = 0x80;
 }
 

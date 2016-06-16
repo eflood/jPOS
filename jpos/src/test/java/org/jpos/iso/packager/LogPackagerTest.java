@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,7 @@ package org.jpos.iso.packager;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import static org.junit.Assert.assertEquals;
+
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 

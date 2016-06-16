@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -33,7 +33,7 @@ import java.util.concurrent.BlockingQueue;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.ISOChannel;
 import org.jpos.iso.ISOException;
@@ -277,8 +277,7 @@ public class ChannelAdaptorTest {
             Thread thread =  iterator.next();
             try {
                 thread.join(RECONNECT_DELAY + 500);
-            } catch (InterruptedException e) {
-            }
+            } catch (InterruptedException ignored) { }
             if (!thread.isAlive()) {
                 iterator.remove();
             }

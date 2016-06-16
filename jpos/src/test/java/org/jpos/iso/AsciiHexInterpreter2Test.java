@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class AsciiHexInterpreter2Test {
@@ -107,7 +106,7 @@ public class AsciiHexInterpreter2Test {
     public void testInterpretThrowsNullPointerException() throws Throwable {
         byte[] b = new byte[5];
         try {
-            new AsciiHexInterpreter().interpret((byte[]) null, b, 100);
+            new AsciiHexInterpreter().interpret(null, b, 100);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -237,7 +236,7 @@ public class AsciiHexInterpreter2Test {
     @Test
     public void testUninterpretThrowsNullPointerException() throws Throwable {
         try {
-            AsciiHexInterpreter.INSTANCE.uninterpret((byte[]) null, 100, 1000);
+            AsciiHexInterpreter.INSTANCE.uninterpret(null, 100, 1000);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

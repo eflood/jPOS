@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,14 +18,10 @@
 
 package org.jpos.util;
 
-import static org.jpos.util.LogFileTestUtils.getStringFromCompressedFile;
 import static org.jpos.util.LogFileTestUtils.getStringFromFile;
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertFalse;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Properties;
 
 import org.jpos.core.Configuration;

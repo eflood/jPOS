@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,15 +18,13 @@
 
 package org.jpos.q2.qbean;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.Configurable;
 import org.jpos.core.ConfigurationException;
 import org.jpos.q2.QBeanSupport;
 import org.jpos.q2.QFactory;
 import org.jpos.util.LogListener;
 import org.jpos.util.Logger;
-
-import java.util.Iterator;
 
 public class LoggerAdaptor extends QBeanSupport {
     Logger logger;
@@ -36,9 +34,8 @@ public class LoggerAdaptor extends QBeanSupport {
     }
     protected void startService () throws ConfigurationException {
         logger.removeAllListeners ();
-        Iterator iter = getPersist ().getChildren ("log-listener").iterator();
-        while (iter.hasNext()) 
-            addListener ((Element) iter.next ());
+        for (Object o : getPersist().getChildren("log-listener"))
+            addListener((Element) o);
     }
     protected void stopService() {
         logger.removeAllListeners ();
@@ -65,8 +62,6 @@ public class LoggerAdaptor extends QBeanSupport {
                 throw new ConfigurationException (ex);
             }
         }
-        
         logger.addListener (listener);
     }
 }
-

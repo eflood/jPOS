@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -72,7 +72,7 @@ public class EbcdicPrefixer2Test {
     @Test
     public void testDecodeLengthThrowsNullPointerException() throws Throwable {
         try {
-            new EbcdicPrefixer(100).decodeLength((byte[]) null, 100);
+            new EbcdicPrefixer(100).decodeLength(null, 100);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -128,7 +128,7 @@ public class EbcdicPrefixer2Test {
     @Test
     public void testEncodeLengthThrowsNullPointerException() throws Throwable {
         try {
-            new EbcdicPrefixer(2).encodeLength(100, (byte[]) null);
+            new EbcdicPrefixer(2).encodeLength(100, null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

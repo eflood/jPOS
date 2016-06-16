@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -69,10 +69,8 @@ public class FilterLogListener implements LogListener,Configurable
     {
         try {
             String log_priority = cfg.get("priority");
-            if ( (log_priority != null) && (!log_priority.trim().equals("")) )
-            {
-                if (levels.containsKey(log_priority))
-                    priority = log_priority;
+            if ( log_priority != null && !log_priority.trim().equals("") && levels.containsKey(log_priority) ) {
+                priority = log_priority;
             }
         } catch (Exception e) {
             throw new ConfigurationException (e);
@@ -109,22 +107,19 @@ public class FilterLogListener implements LogListener,Configurable
 
         Integer J = (Integer)levels.get(priority);
 
-        return (I >= J);
+        return I >= J;
     }
 
     public synchronized LogEvent log(LogEvent ev) {
-        if (p != null) {
-            if (permitLogging(ev.getTag()))
-            {
-                Date d = new Date();
-                p.println(
-                        "<log realm=\"" + ev.getRealm() + "\" at=\"" + d.toString()
-                        + "." + d.getTime() % 1000 + "\">"
-                );
-                ev.dump(p, "  ");
-                p.println("</log>");
-                p.flush();
-            }
+        if (p != null && permitLogging(ev.getTag())) {
+            Date d = new Date();
+            p.println(
+                    "<log realm=\"" + ev.getRealm() + "\" at=\"" + d.toString()
+                    + "." + d.getTime() % 1000 + "\">"
+            );
+            ev.dump(p, "  ");
+            p.println("</log>");
+            p.flush();
         }
         return ev;
     }

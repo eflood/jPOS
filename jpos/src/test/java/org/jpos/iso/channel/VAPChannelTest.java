@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -123,17 +123,6 @@ public class VAPChannelTest {
         BASE1Header result = (BASE1Header) vAPChannel.getDynamicHeader(image);
         assertNotNull(result);
         assertTrue("Test completed without Exception", true);
-    }
-
-    @Test
-    public void testGetDynamicHeaderThrowsNullPointerException() throws Throwable {
-        VAPChannel vAPChannel = new VAPChannel();
-        try {
-            vAPChannel.getDynamicHeader((byte[]) null);
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
     }
 
     @Test
@@ -298,7 +287,7 @@ public class VAPChannelTest {
     @Test
     public void testShouldIgnore2() throws Throwable {
         VAPChannel vAPChannel = new VAPChannel(new GenericPackager());
-        boolean result = vAPChannel.shouldIgnore((byte[]) null);
+        boolean result = vAPChannel.shouldIgnore(null);
         assertFalse("result", result);
     }
 

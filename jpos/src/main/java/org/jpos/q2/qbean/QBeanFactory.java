@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,9 +18,10 @@
 
 package org.jpos.q2.qbean;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.q2.QBeanSupport;
+import org.jpos.q2.QFactory;
 import org.jpos.util.NameRegistrar;
 
 import java.util.*;
@@ -75,7 +76,7 @@ public class QBeanFactory extends QBeanSupport implements QBeanFactoryMBean {
             String stopMethod = bean.getAttributeValue("stop-method");
             if(beanInstance!=null && stopMethod!=null){
                 try{
-                    getFactory().invoke(beanInstance, stopMethod, null);
+                    QFactory.invoke(beanInstance, stopMethod, null);
                 }catch(Exception e){
                     log.warn(e);
                 }
@@ -126,15 +127,14 @@ public class QBeanFactory extends QBeanSupport implements QBeanFactoryMBean {
                     + Character.toUpperCase(pName.charAt(0))
                     + pName.substring(1);
             if (pValue == null) {
-                getFactory()
-                        .invoke(beanInstance, methodName, getBean(pRef));
+                QFactory.invoke(beanInstance, methodName, getBean(pRef));
             } else {
-                getFactory().invoke(beanInstance, methodName, pValue);
+                QFactory.invoke(beanInstance, methodName, pValue);
             }
         }
         String startMethod = bean.getAttributeValue("start-method");
         if(startMethod!=null){
-            getFactory().invoke(beanInstance, startMethod, null);
+            QFactory.invoke(beanInstance, startMethod, null);
         }
         if(useCache)//indication for a singleton 
           beanMap.put(id, beanInstance);   

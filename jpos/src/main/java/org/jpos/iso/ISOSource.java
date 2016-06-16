@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,11 +34,11 @@ public interface ISOSource {
      * @exception ISOException
      * @exception ISOFilter.VetoException;
      */
-    public void send (ISOMsg m) 
+    void send(ISOMsg m)
         throws IOException, ISOException;
 
     /**
      * @return true if source is connected and usable
      */
-    public boolean isConnected();
+    boolean isConnected();
 }

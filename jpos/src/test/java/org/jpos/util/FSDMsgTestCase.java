@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,7 @@
 
 package org.jpos.util;
 
+import java.io.FileNotFoundException;
 import junit.framework.TestCase;
 import org.jpos.iso.FSDISOMsg;
 import org.jpos.iso.ISOUtil;
@@ -26,6 +27,8 @@ import java.util.Arrays;
 
 public class FSDMsgTestCase extends TestCase {
     private static final String SCHEMA_DIR_URL = "file:build/resources/test/org/jpos/util/";
+    private static final String SCHEMA_JAR_URL = "jar:org/jpos/util/";
+
     FSDMsg imsg;
 
     FSDMsg omsg;
@@ -135,10 +138,9 @@ public class FSDMsgTestCase extends TestCase {
         
 
         String macData = "12345678123456781234567812345678";
-        String binaryMacData = new String(ISOUtil.hex2byte(macData),
-                "ISO8859_1");
+        String binaryMacData = new String(ISOUtil.hex2byte(macData), ISOUtil.CHARSET);
         String id = "01";
-        String binaryID = new String(ISOUtil.hex2byte(id),"ISO8859_1");
+        String binaryID = new String(ISOUtil.hex2byte(id),ISOUtil.CHARSET);
         
         imsg.set("id", id);
         imsg.set("content", macData);
@@ -151,7 +153,7 @@ public class FSDMsgTestCase extends TestCase {
         assertEquals(macData, omsg.get("content"));
 
         macData = "1234567812345678123456781234567812345678123456781234567812345678";
-        binaryMacData = new String(ISOUtil.hex2byte(macData), "ISO8859_1");
+        binaryMacData = new String(ISOUtil.hex2byte(macData), ISOUtil.CHARSET);
         imsg.set("id", id);
         imsg.set("content", macData);
         assertEquals("Dummy separator long data", binaryID + binaryMacData, imsg
@@ -169,7 +171,6 @@ public class FSDMsgTestCase extends TestCase {
         try {
             macData = "1234567890123456789012345678901234567890123456789012345678901234567890123456789099";
 
-            binaryMacData = new String(ISOUtil.hex2byte(macData), "ISO8859_1");
             imsg.set("id", id); 
             imsg.set("content", macData);
 
@@ -182,7 +183,49 @@ public class FSDMsgTestCase extends TestCase {
 
     }
 
-    
+    public void testPackJarSchema() throws Exception {
+        FSDMsg fsdm = new FSDMsg(SCHEMA_JAR_URL + "DSmsg-");
+
+        String mac = "12345678123456781234567812345678";
+        String packedMAC = new String(ISOUtil.hex2byte(mac), ISOUtil.CHARSET);
+        String id = "01";
+        String packedID = new String(ISOUtil.hex2byte(id),ISOUtil.CHARSET);
+
+        fsdm.set("id", id);
+        fsdm.set("content", mac);
+        String s = fsdm.pack();
+        assertEquals(packedID + packedMAC, s);
+
+    }
+
+    public void testLoadMissingDirSchema() throws Exception {
+        FSDMsg fsdm = new FSDMsg(SCHEMA_DIR_URL + "DSmsgX-");
+
+        String mac = "12345678123456781234567812345678";
+        String id = "01";
+
+        fsdm.set("id", id);
+        fsdm.set("content", mac);
+        try {
+          fsdm.pack();
+          fail("FileNotFoundException expected");
+        } catch (FileNotFoundException ex) {}
+    }
+
+    public void testLoadMissingJarSchema() throws Exception {
+        FSDMsg fsdm = new FSDMsg(SCHEMA_JAR_URL + "DSmsgX-");
+
+        String mac = "12345678123456781234567812345678";
+        String id = "01";
+
+        fsdm.set("id", id);
+        fsdm.set("content", mac);
+        try {
+          fsdm.pack();
+          fail("FileNotFoundException expected");
+        } catch (FileNotFoundException ex) {}
+    }
+
     public void testDummySeparatorNumeric() throws Exception {
         FSDMsg m = new FSDMsg(SCHEMA_DIR_URL + "msgDS-");
 

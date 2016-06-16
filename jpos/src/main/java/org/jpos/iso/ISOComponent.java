@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -114,6 +114,7 @@ public abstract class ISOComponent implements Cloneable {
      * @param fieldNumber new field number
      */
     public abstract void setFieldNumber (int fieldNumber);
+    public abstract int getFieldNumber ();
     public abstract void setValue(Object obj) throws ISOException;
     public abstract byte[] pack() throws ISOException;
     public abstract int unpack(byte[] b) throws ISOException;

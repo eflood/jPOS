@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,11 +45,13 @@ public class EMVTagSequenceTest {
 
         EMVTagSequence tagValueSequence = new EMVTagSequence();
 
-        tagValueSequence.add(new LiteralEMVTag(EMVStandardTagType.APPLICATION_PRIMARY_ACCOUNT_NUMBER_0x5A, "19960930000000"));
+        tagValueSequence.add(new LiteralEMVTag(EMVStandardTagType.APPLICATION_PRIMARY_ACCOUNT_NUMBER_0x5A, "999999123456789"));
 
         tagValueSequence.add(new LiteralEMVTag(EMVStandardTagType.APPLICATION_PREFERRED_NAME_0x9F12, "JPOS"));
 
         tagValueSequence.add(new LiteralEMVTag(EMVStandardTagType.APPLICATION_LABEL_0x50, "Q2"));
+
+        tagValueSequence.add(new LiteralEMVTag(EMVStandardTagType.TRANSACTION_CURRENCY_CODE_0x5F2A, "840"));
 
         ISOMsg field48 = new ISOMsg(48);
 
@@ -76,9 +78,8 @@ public class EMVTagSequenceTest {
         byte[] field48Packed = new byte[packed.length - 12];
         System.arraycopy(packed, 12, field48Packed, 0, field48Packed.length);
 
-        Assert.assertEquals("Pack error", 23, field48Packed.length);
-
-        Assert.assertEquals("Pack error", "303230500251325a07199609300000009f12044a504f53", ISOUtil.byte2hex(field48Packed));
+        Assert.assertEquals("Pack error", 29, field48Packed.length);
+        Assert.assertEquals("Pack error", "3032365a08999999123456789f9f12044a504f53500251325f2a020840", ISOUtil.byte2hex(field48Packed));
 
         msg = new ISOMsg();
         packager.unpack(msg, packed);
@@ -88,11 +89,11 @@ public class EMVTagSequenceTest {
         tagValueSequence = new EMVTagSequence();
         tagValueSequence.readFrom((ISOMsg) msg.getComponent(48));
 
-        Assert.assertEquals("Unpack error", 3, tagValueSequence.getAll().size());
+        Assert.assertEquals("Unpack error", 4, tagValueSequence.getAll().size());
 
         String tag1 = EMVStandardTagType.APPLICATION_PRIMARY_ACCOUNT_NUMBER_0x5A.getTagNumberHex();
         LiteralEMVTag pan = (LiteralEMVTag) tagValueSequence.getFirst(tag1);
-        Assert.assertEquals("Unpack error", "19960930000000", pan.getValue());
+        Assert.assertEquals("Unpack error", "999999123456789", pan.getValue());
 
         String tag2 = EMVStandardTagType.APPLICATION_PREFERRED_NAME_0x9F12.getTagNumberHex();
         LiteralEMVTag name = (LiteralEMVTag) tagValueSequence.getFirst(tag2);
@@ -102,15 +103,19 @@ public class EMVTagSequenceTest {
         LiteralEMVTag label = (LiteralEMVTag) tagValueSequence.getFirst(tag3);
         Assert.assertEquals("Unpack error", "Q2", label.getValue());
 
+        String tag4 = EMVStandardTagType.TRANSACTION_CURRENCY_CODE_0x5F2A.getTagNumberHex();
+        LiteralEMVTag currency = (LiteralEMVTag) tagValueSequence.getFirst(tag4);
+        Assert.assertEquals("Unpack error", "840", currency.getValue());
+
         packed = packager.pack(msg);
 
         //skip 4 byte MTI and 8 byte Primary BitMap
         field48Packed = new byte[packed.length - 12];
         System.arraycopy(packed, 12, field48Packed, 0, field48Packed.length);
 
-        Assert.assertEquals("Pack error", 23, field48Packed.length);
+        Assert.assertEquals("Pack error", 29, field48Packed.length);
 
-        Assert.assertEquals("Pack error", "303230500251325a07199609300000009f12044a504f53", ISOUtil.byte2hex(field48Packed));
+        Assert.assertEquals("Pack error", "3032365a08999999123456789f9f12044a504f53500251325f2a020840", ISOUtil.byte2hex(field48Packed));
     }
 
 }

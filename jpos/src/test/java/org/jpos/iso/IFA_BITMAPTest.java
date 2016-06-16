@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,21 +17,13 @@
  */
 
 package org.jpos.iso;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.util.BitSet;
 
-import org.junit.Ignore;
-import static java.lang.String.format;
-import static org.mockito.BDDMockito.*;
-import static org.junit.Assume.*;
-import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
-import org.mockito.*;
-import org.mockito.runners.*;
+
 import org.junit.*;
-import org.junit.runner.*;
+
 /**
  * @author joconnor
  */
@@ -209,7 +201,7 @@ public class IFA_BITMAPTest
         
     }
     @Test public void testThirdBitmapPack() throws Exception {
-        byte[] b = ISOUtil.hex2byte("F23C04800AE00000800000000000010863BC780000000010");
+        byte[] b = ISOUtil.hex2byte("F23C04800AE00000"+"8000000000000108"+"63BC780000000010");
         BitSet bs1 = ISOUtil.byte2BitSet(b, 0, 192);
         ISOBitMap bmap = new ISOBitMap(-1);
         bmap.setValue(bs1);

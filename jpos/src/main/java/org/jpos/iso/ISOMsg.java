@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -78,6 +78,7 @@ public class ISOMsg extends ISOComponent
      * any reference held by a Composite.
      * @param fieldNumber new field number
      */
+    @Override
     public void setFieldNumber (int fieldNumber) {
         this.fieldNumber = fieldNumber;
     }
@@ -117,7 +118,7 @@ public class ISOMsg extends ISOComponent
      * @return message header image (may be null)
      */
     public byte[] getHeader() {
-        return (header != null) ? header.pack() : null;
+        return header != null ? header.pack() : null;
     }
 
     /**
@@ -173,6 +174,7 @@ public class ISOMsg extends ISOComponent
     /**
      * @return the max field number associated with this message
      */
+    @Override
     public int getMaxField() {
         if (maxFieldDirty)
             recalcMaxField();
@@ -211,14 +213,20 @@ public class ISOMsg extends ISOComponent
             dirty = true;
         }
     }
-   /**
-    * Creates an ISOField associated with fldno within this ISOMsg
-    * @param fldno field number
-    * @param value field value
-    * @throws ISOException on error
-    */
-    public void set(int fldno, String value) throws ISOException {
-        if (value != null) {
+
+    /**
+     * Creates an ISOField associated with fldno within this ISOMsg.
+     *
+     * @param fldno field number
+     * @param value field value
+     */
+    public void set(int fldno, String value) {
+        if (value == null) {
+            unset(fldno);
+            return;
+        }
+
+        try {
             if (!(packager instanceof ISOBasePackager)) {
                 // No packager is available, we can't tell what the field
                 // might be, so treat as a String!
@@ -233,18 +241,16 @@ public class ISOMsg extends ISOComponent
                     set(new ISOField(fldno, value));
                 }
             }
-        }
-        else
-            unset(fldno);
+        } catch (ISOException ex) {}; //NOPMD: never happens for the given arguments of set methods
     }
 
-   /**
-    * Creates an ISOField associated with fldno within this ISOMsg
-    * @param fpath dot-separated field path (i.e. 63.2)
-    * @param value field value
-    * @throws ISOException on error
-    */
-    public void set (String fpath, String value) throws ISOException {
+    /**
+     * Creates an ISOField associated with fldno within this ISOMsg.
+     *
+     * @param fpath dot-separated field path (i.e. 63.2)
+     * @param value field value
+     */
+    public void set(String fpath, String value) {
         StringTokenizer st = new StringTokenizer (fpath, ".");
         ISOMsg m = this;
         for (;;) {
@@ -254,18 +260,20 @@ public class ISOMsg extends ISOComponent
                 if (obj instanceof ISOMsg)
                     m = (ISOMsg) obj;
                 else
-                    /* 
+                    /**
                      * we need to go deeper, however, if the value == null then
                      * there is nothing to do (unset) at the lower levels, so break now and save some processing.
                      */
                     if (value == null) {
                         break;
                     } else {
-                        // We have a value to set, so adding a level to hold it is sensible.
-                        m.set (m = new ISOMsg (fldno));
+                        try {
+                            // We have a value to set, so adding a level to hold it is sensible.
+                            m.set(m = new ISOMsg (fldno));
+                        } catch (ISOException ex) {} //NOPMD: never happens for the given arguments of set methods
                     }
             } else {
-                m.set (fldno, value);
+                m.set(fldno, value);
                 break;
             }
         }
@@ -303,15 +311,14 @@ public class ISOMsg extends ISOComponent
              }
          }
      }
-    
-   
-   /**
-    * Creates an ISOField associated with fldno within this ISOMsg
-    * @param fpath dot-separated field path (i.e. 63.2)
-    * @param value binary field value
-    * @throws ISOException on error
-    */
-    public void set (String fpath, byte[] value) throws ISOException {
+
+    /**
+     * Creates an ISOField associated with fldno within this ISOMsg.
+     *
+     * @param fpath dot-separated field path (i.e. 63.2)
+     * @param value binary field value
+     */
+    public void set(String fpath, byte[] value) {
         StringTokenizer st = new StringTokenizer (fpath, ".");
         ISOMsg m = this;
         for (;;) {
@@ -321,24 +328,31 @@ public class ISOMsg extends ISOComponent
                 if (obj instanceof ISOMsg)
                     m = (ISOMsg) obj;
                 else
-                    m.set (m = new ISOMsg (fldno));
+                    try {
+                        m.set(m = new ISOMsg (fldno));
+                    } catch (ISOException ex) {} //NOPMD: never happens for the given arguments of set methods
             } else {
-                m.set (fldno, value);
+                m.set(fldno, value);
                 break;
             }
         }
     }
-   /**
-    * Creates an ISOBinaryField associated with fldno within this ISOMsg
-    * @param fldno field number
-    * @param value field value
-    * @throws ISOException on error
-    */
-    public void set (int fldno, byte[] value) throws ISOException {
-        if (value != null)
-            set (new ISOBinaryField (fldno, value));
-        else
-            unset (fldno);
+
+    /**
+     * Creates an ISOBinaryField associated with fldno within this ISOMsg.
+     *
+     * @param fldno field number
+     * @param value field value
+     */
+    public void set(int fldno, byte[] value) {
+        if (value == null) {
+            unset(fldno);
+            return;
+        }
+
+        try {
+            set(new ISOBinaryField(fldno, value));
+        } catch (ISOException ex) {}; //NOPMD: never happens for the given arguments of set methods
     }
 
 
@@ -346,6 +360,7 @@ public class ISOMsg extends ISOComponent
      * Unset a field if it exists, otherwise ignore.
      * @param fldno - the field number
      */
+    @Override
     public void unset (int fldno) {
         if (fields.remove (fldno) != null)
             dirty = maxFieldDirty = true;
@@ -358,12 +373,13 @@ public class ISOMsg extends ISOComponent
         for (int fld : flds)
             unset(fld);
     }
+
     /**
      * Unset a field referenced by a fpath if it exists, otherwise ignore.
+     *
      * @param fpath dot-separated field path (i.e. 63.2)
-     * @throws ISOException on error
-    */
-    public void unset (String fpath) throws ISOException {
+     */
+    public void unset(String fpath) {
         StringTokenizer st = new StringTokenizer (fpath, ".");
         ISOMsg m = this;
         ISOMsg lastm = m;
@@ -379,7 +395,7 @@ public class ISOMsg extends ISOComponent
                     m = (ISOMsg) obj;
                 }
                 else {
-                    // No real way of unset further subfield, exit.  Perhaps should be ISOException?
+                    // No real way of unset further subfield, exit.
                     break;
                 }
             } else {
@@ -398,6 +414,7 @@ public class ISOMsg extends ISOComponent
      *
      * @return ISOComponent
      */
+    @Override
     public ISOComponent getComposite() {
         return this;
     }
@@ -411,16 +428,18 @@ public class ISOMsg extends ISOComponent
 
         int mf = Math.min (getMaxField(), 192);
 
-        BitSet bmap = new BitSet (((mf+62)>>6)<<6);
+        BitSet bmap = new BitSet (mf+62 >>6 <<6);
         for (int i=1; i<=mf; i++)
-            if ((fields.get (i)) != null)
+            if (fields.get (i) != null)
                 bmap.set (i);
         set (new ISOBitMap (-1, bmap));
         dirty = false;
     }
     /**
      * clone fields
+     * @return copy of fields
      */
+    @Override
     public Map getChildren() {
         return (Map) ((TreeMap)fields).clone();
     }
@@ -429,6 +448,7 @@ public class ISOMsg extends ISOComponent
      * @return the packed message
      * @exception ISOException
      */
+    @Override
     public byte[] pack() throws ISOException {
         synchronized (this) {
             recalcBitMap();
@@ -441,11 +461,13 @@ public class ISOMsg extends ISOComponent
      * @return consumed bytes
      * @exception ISOException
      */
+    @Override
     public int unpack(byte[] b) throws ISOException {
         synchronized (this) {
             return packager.unpack(this, b);
         }
     }
+    @Override
     public void unpack (InputStream in) throws IOException, ISOException {
         synchronized (this) {
             packager.unpack(this, in);
@@ -460,6 +482,7 @@ public class ISOMsg extends ISOComponent
      * @param p - print stream
      * @param indent - optional indent string
      */
+    @Override
     public void dump (PrintStream p, String indent) {
         ISOComponent c;
         p.print (indent + "<" + XMLPackager.ISOMSG_TAG);
@@ -511,11 +534,14 @@ public class ISOMsg extends ISOComponent
      * Return the object value associated with the given field number
      * @param fldno the Field Number
      * @return the field Object
-     * @throws ISOException on error
      */
-    public Object getValue(int fldno) throws ISOException {
+    public Object getValue(int fldno) {
         ISOComponent c = getComponent(fldno);
-        return c != null ? c.getValue() : null;
+        try {
+            return c != null ? c.getValue() : null;
+        } catch (ISOException ex) {
+            return null; //never happens for the given arguments of getValue method
+        }
     }
     /**
      * Return the object value associated with the given field path
@@ -530,6 +556,11 @@ public class ISOMsg extends ISOComponent
         for (;;) {
             int fldno = Integer.parseInt(st.nextToken());
             obj = m.getValue (fldno);
+             if (obj==null){
+                // The user will always get a null value for an incorrect path or path not present in the message
+                // no point having the ISOException thrown for fields that were not received.
+                break;
+            }
             if (st.hasMoreTokens()) {
                 if (obj instanceof ISOMsg) {
                     m = (ISOMsg) obj;
@@ -573,15 +604,11 @@ public class ISOMsg extends ISOComponent
     public String getString (int fldno) {
         String s = null;
         if (hasField (fldno)) {
-            try {
-                Object obj = getValue(fldno);
-                if (obj instanceof String)
-                    s = (String) obj;
-                else if (obj instanceof byte[])
-                    s = ISOUtil.hexString ((byte[]) obj);
-            } catch (ISOException e) {
-                return null; // make PMD happy by returning here and avoiding an empty catch
-            }
+            Object obj = getValue(fldno);
+            if (obj instanceof String)
+                s = (String) obj;
+            else if (obj instanceof byte[])
+                s = ISOUtil.hexString((byte[]) obj);
         }
         return s;
     }
@@ -611,17 +638,11 @@ public class ISOMsg extends ISOComponent
     public byte[] getBytes (int fldno) {
         byte[] b = null;
         if (hasField (fldno)) {
-            try {
-                Object obj = getValue(fldno);
-                if (obj instanceof String)
-                    b = ((String) obj).getBytes(ISOUtil.ENCODING);
-                else if (obj instanceof byte[])
-                    b = ((byte[]) obj);
-            } catch (ISOException ignored) {
-                return null;
-            } catch (UnsupportedEncodingException ignored) {
-                return null;
-            }
+            Object obj = getValue(fldno);
+            if (obj instanceof String)
+                b = ((String) obj).getBytes(ISOUtil.CHARSET);
+            else if (obj instanceof byte[])
+                b = (byte[]) obj;
         }
         return b;
     }
@@ -635,12 +656,10 @@ public class ISOMsg extends ISOComponent
         try {
             Object obj = getValue(fpath);
             if (obj instanceof String)
-                b = ((String) obj).getBytes(ISOUtil.ENCODING);
+                b = ((String) obj).getBytes(ISOUtil.CHARSET);
             else if (obj instanceof byte[])
-                b = ((byte[]) obj);
+                b = (byte[]) obj;
         } catch (ISOException ignored) {
-            return null;
-        } catch (UnsupportedEncodingException ignored) {
             return null;
         }
         return b;
@@ -698,9 +717,12 @@ public class ISOMsg extends ISOComponent
     /**
      * Don't call setValue on an ISOMsg. You'll sure get
      * an ISOException. It's intended to be used on Leafs
+     * @param obj
+     * @throws org.jpos.iso.ISOException
      * @see ISOField
      * @see ISOException
      */
+    @Override
     public void setValue(Object obj) throws ISOException {
         throw new ISOException ("setValue N/A in ISOMsg");
     }
@@ -771,6 +793,7 @@ public class ISOMsg extends ISOComponent
     /**
      * @return a string suitable for a log
      */
+    @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
         if (isIncoming())
@@ -791,11 +814,13 @@ public class ISOMsg extends ISOComponent
         }
         return s.toString();
     }
+    @Override
     public Object getKey() throws ISOException {
         if (fieldNumber != -1)
             return fieldNumber;
         throw new ISOException ("This is not a subField");
     }
+    @Override
     public Object getValue() {
         return this;
     }
@@ -830,6 +855,11 @@ public class ISOMsg extends ISOComponent
             set (c);
         } else
             unset (newFieldNumber);
+    }
+
+    @Override
+    public int getFieldNumber () {
+        return fieldNumber;
     }
 
     /**
@@ -951,6 +981,7 @@ public class ISOMsg extends ISOComponent
         direction = in.readByte();
     }
  
+    @Override
     public void writeExternal (ObjectOutput out) throws IOException {
         out.writeByte (0);  // reserved for future expansion (version id)
         out.writeShort (fieldNumber);
@@ -979,6 +1010,7 @@ public class ISOMsg extends ISOComponent
         out.writeByte ('E');
     }
 
+    @Override
     public void readExternal  (ObjectInput in)
         throws IOException, ClassNotFoundException
     {
@@ -1036,7 +1068,7 @@ public class ISOMsg extends ISOComponent
      * @return an ISOSource or null
      */
     public ISOSource getSource () {
-        return (sourceRef != null) ? (ISOSource) sourceRef.get () : null;
+        return sourceRef != null ? (ISOSource) sourceRef.get () : null;
     }
     private void writeExternal (ObjectOutput out, char b, ISOComponent c) throws IOException {
         out.writeByte (b);

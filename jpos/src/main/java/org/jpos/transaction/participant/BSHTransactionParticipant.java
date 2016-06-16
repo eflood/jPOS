@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,7 +19,7 @@
 package org.jpos.transaction.participant;
 
 import bsh.EvalError;
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.core.XmlConfigurable;
 import org.jpos.transaction.AbortParticipant;
@@ -28,7 +28,6 @@ import org.jpos.util.LogEvent;
 import org.jpos.util.Logger;
 import org.jpos.util.SimpleLogSource;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -153,7 +152,7 @@ public class BSHTransactionParticipant extends SimpleLogSource
     }
     
     protected Object executeMethod(BSHMethod m, long id, Serializable context, LogEvent evt, String resultName) 
-    throws EvalError, FileNotFoundException, IOException {
+    throws EvalError, IOException {
         Map params = new HashMap();
         params.put("context", context);
         params.put("id", id);

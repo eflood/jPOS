@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,11 +20,12 @@ package org.jpos.q2.cli;
 
 import org.jpos.q2.CLICommand;
 import org.jpos.q2.CLIContext;
+import org.jpos.q2.Q2;
 
 public class VERSION implements CLICommand
 {
     public void exec(CLIContext cli, String[] args)
     {
-        cli.println(cli.getQ2().getVersionString());
+        cli.println(Q2.getVersionString());
     }
 }

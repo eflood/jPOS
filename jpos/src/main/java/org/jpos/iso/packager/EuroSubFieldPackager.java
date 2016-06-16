@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -107,8 +107,8 @@ public class EuroSubFieldPackager extends ISOBasePackager
             //Determine current tag
             int i = consumed==0&&fld[0]!=null?0:tagPrefixer.decodeLength(b, consumed);
 
-            if (!(i < fld.length) || fld[i] == null)
-                throw new ISOException ("Unsupported sub-field " + i + " unpacking field " + m.getKey());
+            if (i >= fld.length || fld[i] == null)
+                throw new ISOException("Unsupported sub-field " + i + " unpacking field " + m.getKey());
 
             c = fld[i].createComponent(i);
             consumed += fld[i].unpack (c, b, consumed);

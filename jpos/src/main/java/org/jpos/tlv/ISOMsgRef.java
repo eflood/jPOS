@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -48,8 +48,7 @@ public class ISOMsgRef {
     }
 
     public ISOMsg reference(int fieldNumber) {
-        Ref ref = new Ref(fieldNumber);
-        return ref;
+        return new Ref(fieldNumber);
     }
 
 
@@ -228,12 +227,12 @@ public class ISOMsgRef {
         }
 
         @Override
-        public void set(int fldno, String value) throws ISOException {
+        public void set(int fldno, String value) {
             delegate.set(fldno, value);
         }
 
         @Override
-        public void set(String fpath, String value) throws ISOException {
+        public void set(String fpath, String value) {
             delegate.set(fpath, value);
         }
 
@@ -243,12 +242,12 @@ public class ISOMsgRef {
         }
 
         @Override
-        public void set(String fpath, byte[] value) throws ISOException {
+        public void set(String fpath, byte[] value) {
             delegate.set(fpath, value);
         }
 
         @Override
-        public void set(int fldno, byte[] value) throws ISOException {
+        public void set(int fldno, byte[] value) {
             delegate.set(fldno, value);
         }
 
@@ -258,7 +257,7 @@ public class ISOMsgRef {
         }
 
         @Override
-        public void unset(String fpath) throws ISOException {
+        public void unset(String fpath) {
             delegate.unset(fpath);
         }
 
@@ -273,7 +272,7 @@ public class ISOMsgRef {
         }
 
         @Override
-        public Object getValue(int fldno) throws ISOException {
+        public Object getValue(int fldno) {
             return delegate.getValue(fldno);
         }
 

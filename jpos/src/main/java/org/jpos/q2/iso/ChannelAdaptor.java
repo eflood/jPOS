@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,22 +18,23 @@
 
 package org.jpos.q2.iso;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.*;
 import org.jpos.q2.QBeanSupport;
 import org.jpos.q2.QFactory;
 import org.jpos.space.Space;
 import org.jpos.space.SpaceFactory;
+import org.jpos.space.SpaceUtil;
 import org.jpos.util.LogSource;
 import org.jpos.util.Loggeable;
 import org.jpos.util.NameRegistrar;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.SocketTimeoutException;
 import java.util.Date;
-import java.util.Iterator;
 
 /**
  * @author Alejandro Revilla
@@ -43,7 +44,7 @@ public class ChannelAdaptor
     extends QBeanSupport
     implements ChannelAdaptorMBean, Channel, Loggeable
 {
-    Space sp;
+    protected Space sp;
     private ISOChannel channel;
     String in, out, ready, reconnect;
     long delay;
@@ -103,15 +104,13 @@ public class ChannelAdaptor
     }
     private void waitForReceiverToExit() {
         join(receiver);
-        while (sp.inp (ready) != null)
-            ;
+        SpaceUtil.wipe(sp, ready);
     }
     private void join(Thread thread) {
         try {
             if (thread != null)
                 thread.join();
-        } catch (InterruptedException ignored) {
-        }
+        } catch (InterruptedException ignored) { }
     }
     public void destroyService () {
         NameRegistrar.unregister (getName ());
@@ -155,7 +154,7 @@ public class ChannelAdaptor
     /**
      * Queue a message to be transmitted by this adaptor
      * @param m message to send
-     * @param timeout 
+     * @param timeout timeout in millis
      */
     public void send (ISOMsg m, long timeout) {
         sp.out (in, m, timeout);
@@ -193,7 +192,7 @@ public class ChannelAdaptor
         String packagerName = e.getAttributeValue ("packager");
 
         ISOChannel channel   = (ISOChannel) f.newInstance (channelName);
-        ISOPackager packager = null;
+        ISOPackager packager;
         if (packagerName != null) {
             packager = (ISOPackager) f.newInstance (packagerName);
             channel.setPackager (packager);
@@ -214,23 +213,22 @@ public class ChannelAdaptor
     protected void addFilters (FilteredChannel channel, Element e, QFactory fact)
         throws ConfigurationException
     {
-        Iterator iter = e.getChildren ("filter").iterator();
-        while (iter.hasNext()) {
-            Element f = (Element) iter.next();
-            String clazz = f.getAttributeValue ("class");
-            ISOFilter filter = (ISOFilter) fact.newInstance (clazz);
-            fact.setLogger        (filter, f);
-            fact.setConfiguration (filter, f);
-            String direction = f.getAttributeValue ("direction");
+        for (Object o : e.getChildren("filter")) {
+            Element f = (Element) o;
+            String clazz = f.getAttributeValue("class");
+            ISOFilter filter = (ISOFilter) fact.newInstance(clazz);
+            fact.setLogger(filter, f);
+            fact.setConfiguration(filter, f);
+            String direction = f.getAttributeValue("direction");
             if (direction == null)
-                channel.addFilter (filter);
-            else if ("incoming".equalsIgnoreCase (direction))
-                channel.addIncomingFilter (filter);
-            else if ("outgoing".equalsIgnoreCase (direction))
-                channel.addOutgoingFilter (filter);
-            else if ("both".equalsIgnoreCase (direction)) {
-                channel.addIncomingFilter (filter);
-                channel.addOutgoingFilter (filter);
+                channel.addFilter(filter);
+            else if ("incoming".equalsIgnoreCase(direction))
+                channel.addIncomingFilter(filter);
+            else if ("outgoing".equalsIgnoreCase(direction))
+                channel.addOutgoingFilter(filter);
+            else if ("both".equalsIgnoreCase(direction)) {
+                channel.addIncomingFilter(filter);
+                channel.addOutgoingFilter(filter);
             }
         }
     }
@@ -334,9 +332,9 @@ public class ChannelAdaptor
                         }
                         ISOUtil.sleep(1000);
                     }
-                } catch (SocketTimeoutException e) {
+                } catch (SocketTimeoutException | EOFException e) {
                     if (running()) {
-                        getLog().warn ("channel-receiver-"+out, "Read timeout");
+                        getLog().warn ("channel-receiver-"+out, "Read timeout / EOF - reconnecting");
                         sp.out (reconnect, Boolean.TRUE, delay);
                         disconnect ();
                         sp.out (in, Boolean.TRUE); // wake-up Sender
@@ -361,29 +359,27 @@ public class ChannelAdaptor
             ISOUtil.sleep(1000);
         }
         while (running() && !channel.isConnected ()) {
-            while (sp.inp (ready) != null)
-                ;
+            SpaceUtil.wipe(sp, ready);
             try {
                 channel.connect ();
-            } catch (IOException e) {
-                getLog().warn ("check-connection", e.getMessage ());
+            } catch (IOException ignored) {
+                // channel.connect already logs - no need for more warnings
             }
             if (!channel.isConnected ())
                 ISOUtil.sleep (delay);
             else
                 connects++;
         }
-        if (running() && (sp.rdp (ready) == null))
+        if (running() && sp.rdp (ready) == null)
             sp.out (ready, new Date());
     }
     protected void disconnect () {
         // do not synchronize on this as both Sender and Receiver can deadlock against a thread calling stop()
         synchronized (disconnectLock) {
             try {
-                while (sp.inp(ready) != null)
-                    ;
+                SpaceUtil.wipe(sp, ready);
                 channel.disconnect();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 getLog().warn("disconnect", e);
             }
         }
@@ -407,7 +403,9 @@ public class ChannelAdaptor
             port = Integer.parseInt (
                 getProperty (getProperties ("channel"), "port")
             );
-        } catch (NumberFormatException e) { }
+        } catch (NumberFormatException e) {
+            getLog().error(e);
+        }
         return port;
     }
     public synchronized void setSocketFactory (String sFac) {

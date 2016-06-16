@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -64,13 +64,13 @@ public class BlockingQueueTest {
         BlockingQueue blockingQueue = new BlockingQueue();
         LinkedList queue = new LinkedList<Object>();
         Boolean boolean2 = Boolean.TRUE;
-        queue.add(boolean2);
+        queue.add(true);
         queue.add("");
         blockingQueue.setQueue(queue);
         Boolean result = (Boolean) blockingQueue.dequeue(-1L);
         assertSame("blockingQueue.getQueue()", queue, blockingQueue.getQueue());
         assertFalse("blockingQueue.getQueue().get(0) had boolean2 removed", boolean2.equals(blockingQueue.getQueue().get(0)));
-        assertSame("result", boolean2, result);
+        assertSame("result", true, result);
         assertEquals("blockingQueue.consumerCount()", 0, blockingQueue.consumerCount());
     }
 
@@ -104,13 +104,13 @@ public class BlockingQueueTest {
     public void testDequeue2() throws Throwable {
         LinkedList queue = new LinkedList();
         Boolean boolean2 = Boolean.FALSE;
-        queue.add(boolean2);
+        queue.add(false);
         BlockingQueue blockingQueue = new BlockingQueue();
         blockingQueue.setQueue(queue);
         Boolean result = (Boolean) blockingQueue.dequeue();
         assertSame("blockingQueue.getQueue()", queue, blockingQueue.getQueue());
-        assertFalse("blockingQueue.getQueue().contains(boolean2)", blockingQueue.getQueue().contains(boolean2));
-        assertSame("result", boolean2, result);
+        assertFalse("blockingQueue.getQueue().contains(boolean2)", blockingQueue.getQueue().contains(false));
+        assertSame("result", false, result);
         assertEquals("blockingQueue.consumerCount()", 0, blockingQueue.consumerCount());
     }
 
@@ -177,13 +177,13 @@ public class BlockingQueueTest {
     public void testDequeue7() throws Throwable {
         LinkedList queue = new LinkedList();
         Boolean boolean2 = Boolean.FALSE;
-        queue.add(boolean2);
+        queue.add(false);
         queue.add(Boolean.FALSE);
         BlockingQueue blockingQueue = new BlockingQueue();
         blockingQueue.setQueue(queue);
         Boolean result = (Boolean) blockingQueue.dequeue(-1L);
         assertSame("blockingQueue.getQueue()", queue, blockingQueue.getQueue());
-        assertSame("result", boolean2, result);
+        assertSame("result", false, result);
         assertEquals("blockingQueue.consumerCount()", 0, blockingQueue.consumerCount());
     }
 

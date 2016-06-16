@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,7 @@ package org.jpos.q2.qbean;
 import bsh.BshClassManager;
 import bsh.Interpreter;
 import bsh.UtilEvalError;
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.q2.QBeanSupport;
 
 public class BSH extends QBeanSupport implements Runnable {

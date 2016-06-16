@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,8 +19,9 @@
 package org.jpos.util;
 
 import java.io.PrintStream;
+import java.io.Serializable;
 
-public class FrozenLogEvent extends LogEvent {
+public class FrozenLogEvent extends LogEvent implements Serializable {
     String frozen;
     String realm;
     public FrozenLogEvent (LogEvent evt) {
@@ -40,4 +41,6 @@ public class FrozenLogEvent extends LogEvent {
     public String toString () {
         return frozen;
     }
+
+    private static final long serialVersionUID = -5090836627480784404L;
 }

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -118,15 +118,10 @@ public class BaseSMAdapterTest {
         }
     }
 
-    @Test
-    public void testGenerateCBC_MACThrowsNullPointerException1() throws Throwable {
-        try {
-            new BaseSMAdapter().generateCBC_MAC((byte[]) null, new SecureDESKey((short) 100, "testBaseSMAdapterKeyType",
-                    "testBaseSMAdapterKeyHexString1", "testBaseSMAdapterKeyCheckValueHexString1"));
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
+    @Test(expected = SMException.class)
+    public void testGenerateCBC_MACThrowsSMException1() throws Throwable {
+        new BaseSMAdapter().generateCBC_MAC(null, new SecureDESKey((short) 100, "testBaseSMAdapterKeyType",
+                "testBaseSMAdapterKeyHexString1", "testBaseSMAdapterKeyCheckValueHexString1"));
     }
 
     @Test
@@ -191,15 +186,10 @@ public class BaseSMAdapterTest {
         }
     }
 
-    @Test
-    public void testImportKeyThrowsNullPointerException2() throws Throwable {
-        try {
-            new BaseSMAdapter().importKey((short) 100, "testBaseSMAdapterKeyType", (byte[]) null, new SecureDESKey((short) 100,
-                    "testBaseSMAdapterKeyType", "testBaseSMAdapterKeyHexString1", "testBaseSMAdapterKeyCheckValueHexString1"), true);
-            fail("Expected NullPointerException to be thrown");
-        } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
-        }
+    @Test(expected = SMException.class)
+    public void testImportKeyThrowsSMException2() throws Throwable {
+        new BaseSMAdapter().importKey((short) 100, "testBaseSMAdapterKeyType", null, new SecureDESKey((short) 100,
+                "testBaseSMAdapterKeyType", "testBaseSMAdapterKeyHexString1", "testBaseSMAdapterKeyCheckValueHexString1"), true);
     }
 
     @Test

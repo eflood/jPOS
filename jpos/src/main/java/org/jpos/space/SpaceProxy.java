@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -59,8 +59,8 @@ public class SpaceProxy implements RemoteSpace, Configurable {
     {
         try {
             LocateRegistry.createRegistry (Registry.REGISTRY_PORT);
-        } catch (ExportException e) {
-            // registry already exists
+        } catch (ExportException ignored) {
+            // NOPMD: ok to happen
         }
         stub = UnicastRemoteObject.exportObject (this);
         ref  = stub.getRef();
@@ -112,8 +112,8 @@ public class SpaceProxy implements RemoteSpace, Configurable {
                 return;
             Thread.sleep (5000);
             UnicastRemoteObject.unexportObject (this, true);
-        } catch (Exception e) {
-            // nothing to do .. we're shutting down ...
+        } catch (Exception ignored) {
+            // NOPMD: nothing to do .. we're shutting down ...
         }
     }
     public void setConfiguration (Configuration cfg) 

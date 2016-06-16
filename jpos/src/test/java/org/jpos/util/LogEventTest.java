@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -105,7 +105,7 @@ public class LogEventTest {
 
     @Test
     public void testDump2() throws Throwable {
-        LogEvent logEvent = new LogEvent("testLogEventTag", (Object) null);
+        LogEvent logEvent = new LogEvent("testLogEventTag", null);
         logEvent.addMessage("testString", "1s");
         PrintStream p = new PrintStream(new ByteArrayOutputStream());
         logEvent.dump(p, "testLogEventIndent");

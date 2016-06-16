@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,8 +17,6 @@
  */
 
 package org.jpos.iso;
-
-import java.io.UnsupportedEncodingException;
 
 
 /**
@@ -37,38 +35,34 @@ public class AsciiInterpreter implements Interpreter
 	 * (non-Javadoc)
 	 *
      */
+    @Override
     public void interpret(String data, byte[] b, int offset)
     {
-        try {
-            System.arraycopy(data.getBytes(ISOUtil.ENCODING), 0, b, offset, data.length());
-        } catch (UnsupportedEncodingException ignored) {
-            // encoding is supported
-        }
+        System.arraycopy(data.getBytes(ISOUtil.CHARSET), 0, b, offset, data.length());
     }
 
     /**
 	 * (non-Javadoc)
 	 *
      */
+    @Override
     public String uninterpret (byte[] rawData, int offset, int length) {
         byte[] ret = new byte[length];
         try {
             System.arraycopy(rawData, offset, ret, 0, length);
-            return new String(ret, ISOUtil.ENCODING);
-        } catch (UnsupportedEncodingException ignored) {
-            // encoding is supported
+            return new String(ret, ISOUtil.CHARSET);
         } catch (IndexOutOfBoundsException e) {
             throw new RuntimeException(
                 String.format("Required %d but just got %d bytes", length, rawData.length-offset)
             );
         }
-        return null;
     }
 
     /**
 	 * (non-Javadoc)
 	 *
      */
+    @Override
     public int getPackedLength(int nDataUnits)
     {
         return nDataUnits;

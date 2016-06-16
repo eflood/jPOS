@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,7 @@
 
 package org.jpos.q2.iso;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.*;
 import org.jpos.q2.QBeanSupport;
@@ -129,12 +129,10 @@ public class QMUX
             synchronized (this) { tx++; rxPending++; }
 
             for (;;) {
-                resp = (ISOMsg) isp.rd (key, timeout);
-                if (shouldIgnore (resp)) 
-                    continue;
-                isp.inp (key);
-                break;
-            } 
+                resp = (ISOMsg) isp.in (key, timeout);
+                if (!shouldIgnore (resp))
+                    break;
+            }
             if (resp == null && isp.inp (req) == null) {
                 // possible race condition, retry for a few extra seconds
                 resp = (ISOMsg) isp.in (key, 10000);
@@ -371,14 +369,13 @@ public class QMUX
     }
 
     public boolean isConnected() {
-        if (ready != null && ready.length > 0) {
+        if (running() && ready != null && ready.length > 0) {
             for (String aReady : ready)
                 if (sp.rdp(aReady) != null)
                     return true;
             return false;
         }
-        else
-            return true;
+        return running();
     }
     public void dump (PrintStream p, String indent) {
         p.println (indent + getCountersAsString());

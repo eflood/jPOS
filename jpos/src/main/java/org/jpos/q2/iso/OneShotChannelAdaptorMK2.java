@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,7 @@
 
 package org.jpos.q2.iso;
 
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.iso.BaseChannel;
 import org.jpos.iso.Channel;
@@ -100,7 +100,7 @@ public class OneShotChannelAdaptorMK2
         ready = getName() + ".ready";
 
         String s = persist.getChildTextTrim("max-connections");
-        maxConnections = (s != null) ? Integer.parseInt(s) : 1;
+        maxConnections = s != null ? Integer.parseInt(s) : 1;
         handbackFields = cfg.getInts("handback-field");
 
         s = persist.getChildTextTrim("delay");
@@ -274,7 +274,9 @@ public class OneShotChannelAdaptorMK2
                     }
                     catch (IOException e)
                     {
+                        getLog().error(e);
                     }
+                    NameRegistrar.unregister("channel."+channel.getName());
                 }
             }
 
@@ -289,7 +291,7 @@ public class OneShotChannelAdaptorMK2
 
     private void takeOffline()
     {
-        SpaceUtil.wipe(sp,ready);
+        SpaceUtil.wipe(sp, ready);
     }
 
     private void takeOnline()
@@ -536,7 +538,7 @@ public class OneShotChannelAdaptorMK2
                 }
                 finally
                 {
-                    NameRegistrar.unregister(getName() + id);
+                    NameRegistrar.unregister("channel." + getName() + id);
                 }
             }
         }

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -73,6 +73,12 @@ public abstract class SecureKey
     protected String keyType;
 
     /**
+     * Key scheme indicates protection metchod appiled to this key by
+     * a security module.
+     */
+    protected KeyScheme scheme;
+
+    /**
      * Optional key name
      */
     protected String keyName;
@@ -127,6 +133,23 @@ public abstract class SecureKey
     public String getKeyType () {
         return  this.keyType;
     }
+
+    /**
+     * Key scheme indicates protection metchod appiled to this key by
+     * the security module.
+     *
+     * @param scheme key scheme used to protect this key.
+     */
+    public void setScheme(KeyScheme scheme) {
+        this.scheme = scheme;
+    }
+
+    /**
+     * Gets the key scheme used to protect this key.
+     *
+     * @return key scheme used to protect this key.
+     */
+    public abstract KeyScheme getScheme();
 
     /**
      * optional key name

@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -43,13 +43,25 @@ public class SimpleConfiguration implements Configuration {
         props = new Properties();
         load (filename);
     }
+
+    /**
+     * Returns the value of the configuration property named <tt>name</tt>, or the default value <tt>def</tt>.
+     *
+     * @param name The configuration property key name.
+     * @param def  The default value.
+     * @return  The value stored under <tt>name</tt>,
+     *          or <tt>def</tt> if there's no configuration property under the given <tt>name</tt>.
+     */
     public String get (String name, String def) {
         Object obj = props.get (name);
-        if (obj instanceof List) {
+        if (obj instanceof String[]) {
+            String[] arr= (String[]) obj;
+            obj = arr.length > 0 ? arr[0] : null;
+        } else if (obj instanceof List) {
             List l = (List) obj;
-            obj = (l.size() > 0) ? l.get(0) : null;
+            obj = l.size() > 0 ? l.get(0) : null;
         }
-        return (obj instanceof String) ? ((String) obj) : def;
+        return (obj instanceof String) ? (String)obj : def;
     }
     public String[] getAll (String name) {
         String[] ret;
@@ -124,7 +136,7 @@ public class SimpleConfiguration implements Configuration {
     public boolean getBoolean (String name, boolean def) {
         String v = get (name);
         return v.length() == 0 ? def :
-            (v.equalsIgnoreCase("true") || v.equalsIgnoreCase("yes"));
+                v.equalsIgnoreCase("true") || v.equalsIgnoreCase("yes");
     }
     public void load(String filename) 
         throws IOException

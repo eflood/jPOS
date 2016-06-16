@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,14 +20,12 @@ package org.jpos.transaction.participant;
 
 import bsh.EvalError;
 import bsh.Interpreter;
-import org.jdom.Element;
+import org.jdom2.Element;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 /** This is a utility class that makes it a bit easier to work with beanshell 
@@ -72,7 +70,7 @@ public class BSHMethod {
      *          &lt;routing file='cfg\files\routing1.bsh' cache='false'/>
      *  </pre>
      */ 
-    public static BSHMethod createBshMethod(Element e) throws FileNotFoundException, IOException {
+    public static BSHMethod createBshMethod(Element e) throws IOException {
         if (e == null) {
             return null;
         }
@@ -123,7 +121,7 @@ public class BSHMethod {
      *                      Map.Entry (key, value), interpreter.set(key, value)
      *                      is called. All keys must be Strings.
      */
-    public Object execute(Map arguments, String resultName) throws EvalError, FileNotFoundException, IOException {
+    public Object execute(Map arguments, String resultName) throws EvalError, IOException {
         Interpreter i = initInterpreter(arguments);
         return i.get(resultName);
     }
@@ -138,7 +136,7 @@ public class BSHMethod {
      *  @param returnNames  Collection of Strings. The names of the variables 
      *                      wich`s contents are to be returned.
      */
-    public Map execute(Map arguments, Collection returnNames) throws EvalError, FileNotFoundException, IOException {
+    public Map execute(Map arguments, Collection returnNames) throws EvalError, IOException {
         Interpreter i = initInterpreter(arguments);
         Map result = new HashMap();
         String rName;
@@ -149,7 +147,7 @@ public class BSHMethod {
         return result;
     }
     
-    protected Interpreter initInterpreter(Map arguments) throws EvalError, FileNotFoundException, IOException {
+    protected Interpreter initInterpreter(Map arguments) throws EvalError, IOException {
         Interpreter i = new Interpreter();
         Map.Entry entry;
         for (Object o : arguments.entrySet()) {

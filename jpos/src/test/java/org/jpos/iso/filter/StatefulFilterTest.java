@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -49,7 +49,6 @@ import org.jpos.iso.packager.GenericValidatingPackager;
 import org.jpos.iso.packager.PostPackager;
 import org.jpos.iso.packager.XMLPackager;
 import org.jpos.space.Space;
-import org.jpos.space.SpaceError;
 import org.jpos.util.LogEvent;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -82,7 +81,7 @@ public class StatefulFilterTest {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setKey(key);
 	statefulFilter.setMatchDirection(61);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setIgnoredFields(null);
 	ISOMsg m = new ISOMsg("testStatefulFilterMti");
 	m.setDirection(61);
 	ISOMsg result = statefulFilter.filter(null, m, null);
@@ -119,8 +118,8 @@ public class StatefulFilterTest {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setKey(key);
 	statefulFilter.setMatchDirection(58);
-	statefulFilter.setSavedFields((int[]) null);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setSavedFields(null);
+	statefulFilter.setIgnoredFields(null);
 	ISOMsg m = new ISOMsg("testStatefulFilterMti");
 	m.setDirection(58);
 	ISOMsg result = statefulFilter
@@ -134,7 +133,7 @@ public class StatefulFilterTest {
     public void testFilter4() throws Throwable {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setConfiguration(new SimpleConfiguration());
-	statefulFilter.setSavedFields((int[]) null);
+	statefulFilter.setSavedFields(null);
 	ISOMsg m = new ISOMsg("testStatefulFilterMti");
 	m.setDirection(1);
 	ISOMsg result = statefulFilter.filter(new LogChannel(), m,
@@ -159,8 +158,8 @@ public class StatefulFilterTest {
     public void testFilter6() throws Throwable {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setMatchDirection(58);
-	statefulFilter.setSavedFields((int[]) null);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setSavedFields(null);
+	statefulFilter.setIgnoredFields(null);
 	ISOMsg m = new ISOMsg("testStatefulFilterMti");
 	m.setDirection(58);
 	ISOMsg result = statefulFilter
@@ -176,7 +175,7 @@ public class StatefulFilterTest {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setKey(key);
 	statefulFilter.setMatchDirection(0);
-	statefulFilter.setSavedFields((int[]) null);
+	statefulFilter.setSavedFields(null);
 	ISOMsg m = new ISOMsg("testStatefulFilterMti");
 	ISOMsg result = statefulFilter.filter(
 		new PADChannel(new XMLPackager()), m, new LogEvent(
@@ -209,7 +208,7 @@ public class StatefulFilterTest {
 	statefulFilter.setKey(key);
 	statefulFilter.setSpace((Space) null);
 	statefulFilter.setMatchDirection(0);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setIgnoredFields(null);
 	try {
 	    statefulFilter.filter(new CSChannel("testStatefulFilterHost", 100,
 		    new PostPackager()), new ISOMsg("testStatefulFilterMti"),
@@ -225,8 +224,8 @@ public class StatefulFilterTest {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setSpace((Space) null);
 	statefulFilter.setMatchDirection(0);
-	statefulFilter.setSavedFields((int[]) null);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setSavedFields(null);
+	statefulFilter.setIgnoredFields(null);
 	try {
 	    statefulFilter.filter(new CSChannel("testStatefulFilterHost", 100,
 		    new PostPackager()), new ISOMsg("testStatefulFilterMti"),
@@ -275,7 +274,7 @@ public class StatefulFilterTest {
 	StatefulFilter statefulFilter = new StatefulFilter();
 	statefulFilter.setSpace((Space) null);
 	statefulFilter.setMatchDirection(100);
-	statefulFilter.setSavedFields((int[]) null);
+	statefulFilter.setSavedFields(null);
 	try {
 	    statefulFilter.filter(new PostChannel("testStatefulFilterHost",
 		    100, new GenericSubFieldPackager()), m, new LogEvent());
@@ -314,7 +313,7 @@ public class StatefulFilterTest {
     @Test
     public void testFilterThrowsNullPointerException7() throws Throwable {
 	StatefulFilter statefulFilter = new StatefulFilter();
-	statefulFilter.setKey((int[]) null);
+	statefulFilter.setKey(null);
 	try {
 	    statefulFilter.filter(new BASE24TCPChannel(
 		    new EuroSubFieldPackager()), new ISOMsg(), new LogEvent(
@@ -332,8 +331,8 @@ public class StatefulFilterTest {
 	statefulFilter.setKey(key);
 	statefulFilter.setSpace((Space) null);
 	statefulFilter.setMatchDirection(0);
-	statefulFilter.setSavedFields((int[]) null);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setSavedFields(null);
+	statefulFilter.setIgnoredFields(null);
 	try {
 	    statefulFilter.filter(new CSChannel("testStatefulFilterHost", 100,
 		    new PostPackager()), new ISOMsg("testStatefulFilterMti"),
@@ -353,7 +352,7 @@ public class StatefulFilterTest {
 	statefulFilter.setKey(key);
 	statefulFilter.setSpace((Space) null);
 	statefulFilter.setMatchDirection(100);
-	statefulFilter.setSavedFields((int[]) null);
+	statefulFilter.setSavedFields(null);
 	try {
 	    statefulFilter.filter(new PostChannel("testStatefulFilterHost",
 		    100, new GenericSubFieldPackager()), m, new LogEvent());
@@ -422,7 +421,7 @@ public class StatefulFilterTest {
     public void testGetIgnoredFieldThrowsNullPointerException()
 	    throws Throwable {
 	StatefulFilter statefulFilter = new StatefulFilter();
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setIgnoredFields(null);
 	try {
 	    statefulFilter.getIgnoredField(100);
 	    fail("Expected NullPointerException to be thrown");
@@ -438,7 +437,7 @@ public class StatefulFilterTest {
 	statefulFilter.setKey(key);
 	int[] key2 = new int[3];
 	statefulFilter.setKey(key2);
-	statefulFilter.setIgnoredFields((int[]) null);
+	statefulFilter.setIgnoredFields(null);
 	statefulFilter.setOverwriteOriginalFields(true);
 	int[] key3 = new int[3];
 	statefulFilter.setKey(key3);
@@ -797,7 +796,7 @@ public class StatefulFilterTest {
 	m_statefulFilter2.setOverwriteOriginalFields(false);
 	int[] key4 = new int[0];
 	m_statefulFilter2.setKey(key4);
-	m_statefulFilter2.setKey((int[]) null);
+	m_statefulFilter2.setKey(null);
 	return m_statefulFilter2;
     }
 }

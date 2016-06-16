@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,7 +45,7 @@ public class UtilTest {
     @Test
     public void testAdjustDESParityThrowsNullPointerException() throws Throwable {
         try {
-            Util.adjustDESParity((byte[]) null);
+            Util.adjustDESParity(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());
@@ -75,7 +75,7 @@ public class UtilTest {
     @Test
     public void testIsDESParityAdjustedThrowsNullPointerException() throws Throwable {
         try {
-            Util.isDESParityAdjusted((byte[]) null);
+            Util.isDESParityAdjusted(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
             assertNull("ex.getMessage()", ex.getMessage());

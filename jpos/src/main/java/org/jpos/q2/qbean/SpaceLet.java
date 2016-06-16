@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2014 Alejandro P. Revilla
+ * Copyright (C) 2000-2016 Alejandro P. Revilla
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,7 +20,7 @@ package org.jpos.q2.qbean;
 
 import bsh.EvalError;
 import bsh.Interpreter;
-import org.jdom.Element;
+import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
 import org.jpos.q2.QBeanSupport;
 import org.jpos.space.Space;
@@ -28,7 +28,6 @@ import org.jpos.space.SpaceError;
 import org.jpos.space.SpaceFactory;
 import org.jpos.util.NameRegistrar;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Iterator;
 
@@ -252,7 +251,7 @@ public class SpaceLet extends QBeanSupport implements Space {
         sp = SpaceFactory.getSpace (e != null ? e.getText() : "");
     }
     private String getScript (Element e) {
-        return (e == null) ? null : e.getText();
+        return e == null ? null : e.getText();
     }
     public void nrd (Object key) {
          sp.nrd(key);
@@ -324,7 +323,7 @@ public class SpaceLet extends QBeanSupport implements Space {
         return bsh;
     }
     private boolean eval (Interpreter bsh, String script, String source)
-        throws EvalError, FileNotFoundException, IOException
+        throws EvalError, IOException
     {
         boolean rc = false;
         if (script != null) {
