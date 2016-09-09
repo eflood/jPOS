@@ -21,12 +21,8 @@ package org.jpos.iso;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.PropertyResourceBundle;
-import java.util.ResourceBundle;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * ISO Currency Conversion package
@@ -49,12 +45,16 @@ public class ISOCurrency
     static
     {
         addJavaCurrencies();
+        loadPropertiesFromClasspath("org/jpos/iso/ISOCurrency.properties");
         loadPropertiesFromClasspath("META-INF/org/jpos/config/ISOCurrency.properties");
     }
 
     private static void addJavaCurrencies()
     {
-        Set<java.util.Currency> currencies = java.util.Currency.getAvailableCurrencies();
+        List<java.util.Currency> currencies = java.util.Currency.getAvailableCurrencies()
+                .stream()
+                .sorted(Comparator.comparing(java.util.Currency::getCurrencyCode))
+                .collect(Collectors.toList());
         for (java.util.Currency sc : currencies)
         {
             try
