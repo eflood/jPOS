@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -94,6 +94,8 @@ public class XMLChannel extends BaseChannel {
             if (s.contains("</" + XMLPackager.ISOMSG_TAG + ">") && --sp <= 0)
                 break;
         }
+        if (sb.length() == 0)
+            throw new EOFException();
         return sb.toString().getBytes();
     }
 

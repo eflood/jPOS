@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,14 +19,19 @@
 package org.jpos.iso;
 
 import java.io.PrintStream;
+
 import org.jpos.util.Loggeable;
 
 @SuppressWarnings("unused")
 public class PosDataCode implements Loggeable {
 
-    public enum ReadingMethod {
+    public interface Flag {
+        int getOffset();
+        int intValue();
+    }
+    public enum ReadingMethod implements Flag {
         UNKNOWN                (1, "Unknown"),
-        INFO_NOT_FROM_CARD     (1 << 1, "Information not taken from card"),  // i.e.: RFID
+        CONTACTLESS            (1 << 1, "Information not taken from card"),  // i.e.: RFID
         PHYSICAL               (1 << 2, "Physical entry"),                   // i.e.: Manual Entry or OCR
         BARCODE                (1 << 3, "Bar code"),
         MAGNETIC_STRIPE        (1 << 4, "Magnetic Stripe"),
@@ -50,8 +55,14 @@ public class PosDataCode implements Loggeable {
         public String toString () {
             return description;
         }
+
+        public static int OFFSET = 0;
+        @Override
+        public int getOffset() {
+            return OFFSET;
+        }
     }
-    public enum VerificationMethod {
+    public enum VerificationMethod implements Flag {
         UNKNOWN                              (1, "Unknown"),
         NONE                                 (1 << 1, "None"),
         MANUAL_SIGNATURE                     (1 << 2, "Manual signature"),
@@ -77,8 +88,14 @@ public class PosDataCode implements Loggeable {
         public String toString () {
             return description;
         }
+
+        public static int OFFSET = 4;
+        @Override
+        public int getOffset() {
+            return OFFSET;
+        }
     }
-    public enum POSEnvironment {
+    public enum POSEnvironment implements Flag {
         UNKNOWN                 (1, "Unknown"),
         ATTENDED                (1 << 1, "Attended POS"),
         UNATTENDED              (1 << 2, "Unattended, details unknown"),
@@ -105,9 +122,16 @@ public class PosDataCode implements Loggeable {
         public String toString () {
             return description;
         }
+
+
+        public static int OFFSET = 8;
+        @Override
+        public int getOffset() {
+            return OFFSET;
+        }
     }
 
-    public enum SecurityCharacteristic {
+    public enum SecurityCharacteristic implements Flag {
         UNKNOWN                                      (1, "Unknown"),
         PRIVATE_NETWORK                              (1 << 1, "Private network"),
         OPEN_NETWORK                                 (1 << 2, "Open network (Internet)"),
@@ -138,9 +162,18 @@ public class PosDataCode implements Loggeable {
         public String toString () {
             return description;
         }
+
+        public static int OFFSET = 12;
+        @Override
+        public int getOffset() {
+            return OFFSET;
+        }
     }
 
     private byte[] b = new byte[16];
+
+    public PosDataCode() {
+    }
 
     public PosDataCode (
             int readingMethod,
@@ -149,8 +182,6 @@ public class PosDataCode implements Loggeable {
             int securityCharacteristic)
     {
         super();
-
-        b = new byte[16];
 
         b[0]  = (byte) readingMethod;
         b[1]  = (byte) (readingMethod >>> 8);
@@ -174,32 +205,36 @@ public class PosDataCode implements Loggeable {
     }
 
     private PosDataCode (byte[] b) {
-        this.b = b;
+        if (b != null) {
+            // will always use our own internal copy of array
+            int copyLen= Math.min(b.length, 16);
+            System.arraycopy(b, 0, this.b, 0, copyLen);
+        }
     }
 
     public boolean hasReadingMethods (int readingMethods) {
-        int i = b[3] << 24 | b[2] << 16 | b[1] << 8 | b[0];
+        int i = b[3] << 24 | b[2] << 16  & 0xFF0000 | b[1] << 8  & 0xFF00 | b[0] & 0xFF ;
         return (i & readingMethods) == readingMethods;
     }
     public boolean hasReadingMethod (ReadingMethod method) {
         return hasReadingMethods (method.intValue());
     }
     public boolean hasVerificationMethods (int verificationMethods) {
-        int i = b[7] << 24 | b[6] << 16 | b[5] << 8 | b[4];
+        int i = b[7] << 24 | b[6] << 16 & 0xFF0000 | b[5] << 8  & 0xFF00 | b[4] & 0xFF;
         return (i & verificationMethods) == verificationMethods;
     }
     public boolean hasVerificationMethod (VerificationMethod method) {
         return hasVerificationMethods(method.intValue());
     }
     public boolean hasPosEnvironments (int posEnvironments) {
-        int i = b[11] << 24 | b[10] << 16 | b[9] << 8 | b[8];
+        int i = b[11] << 24  | b[10] << 16 & 0xFF0000 | b[9] << 8 & 0xFF00 | b[8] & 0xFF;
         return (i & posEnvironments) == posEnvironments;
     }
     public boolean hasPosEnvironment (POSEnvironment method) {
         return hasPosEnvironments(method.intValue());
     }
     public boolean hasSecurityCharacteristics (int securityCharacteristics) {
-        int i = b[15] << 24 | b[14] << 16 | b[13] << 8 | b[12];
+        int i = b[15] << 24 | b[14] << 16 & 0xFF0000 | b[13] << 8  & 0xFF00 | b[12] & 0xFF;
         return (i & securityCharacteristics) == securityCharacteristics;
     }
     public boolean hasSecurityCharacteristic (SecurityCharacteristic characteristic) {
@@ -208,12 +243,29 @@ public class PosDataCode implements Loggeable {
     public byte[] getBytes() {
         return b;
     }
+    public boolean isEMV() {
+        return hasReadingMethod(ReadingMethod.ICC) || hasReadingMethod(ReadingMethod.CONTACTLESS);
+    }
+    public boolean isManualEntry() {
+        return hasReadingMethod(ReadingMethod.PHYSICAL);
+    }
+    public boolean isSwiped() {
+        return hasReadingMethod(ReadingMethod.MAGNETIC_STRIPE);
+    }
+    public boolean isRecurring() {
+        return hasPosEnvironment(POSEnvironment.RECURRING);
+    }
+    public boolean isECommerce() {
+        return hasPosEnvironment(POSEnvironment.E_COMMERCE);
+    }
     public String toString() {
         return super.toString() + "[" + ISOUtil.hexString (getBytes())+ "]";
     }
+
     public static PosDataCode valueOf (byte[] b) {
         return new PosDataCode(b);  // we create new objects for now, but may return cached instances in the future
     }
+
     public void dump(PrintStream p, String indent) {
         String inner = indent + "  ";
         StringBuilder sb = new StringBuilder();
@@ -255,4 +307,77 @@ public class PosDataCode implements Loggeable {
         p.printf ("%ssc: %s%n", inner, sb.toString());
         p.println("</pdc>");
     }
+
+
+    /**
+     * Sets or unsets a set of flags according to value
+     * @param value if true flags are set, else unset
+     * @param flags flag set to set or unset
+     */
+    public void setFlags(boolean value, Flag... flags) {
+        if (value) {
+            for (Flag flag  : flags) {
+                for (int v = flag.intValue(), offset = flag.getOffset(); v != 0; v >>>= 8, offset++) {
+                    b[offset] |= (byte) v;
+                }
+            }
+        } else {
+            for (Flag flag  : flags) {
+                for (int v = flag.intValue(), offset = flag.getOffset(); v != 0; v >>>= 8, offset++) {
+                    b[offset] &= (byte) ~v;
+                }
+            }
+        }
+
+    }
+
+    public void setReadingMethods(boolean value, ReadingMethod ... methods ){
+        setFlags(value, methods);
+    }
+
+    public void unsetReadingMethods(ReadingMethod ... methods ) {
+        setReadingMethods(false, methods);
+    }
+
+    public void setReadingMethods(ReadingMethod ... methods ) {
+        setReadingMethods(true, methods);
+    }
+
+    public void setVerificationMethods(boolean value, VerificationMethod ... methods ){
+        setFlags(value, methods);
+    }
+
+    public void unsetVerificationMethods(VerificationMethod ... methods){
+        setVerificationMethods(false, methods);
+    }
+
+    public void setVerificationMethods(VerificationMethod ... methods){
+        setVerificationMethods(true, methods);
+    }
+
+    public void setPOSEnvironments(boolean value, POSEnvironment ... envs){
+        setFlags(value, envs);
+    }
+
+    public void unsetPOSEnvironments(POSEnvironment ... envs){
+        setPOSEnvironments(false, envs);
+    }
+
+    public void setPOSEnvironments(POSEnvironment ... envs){
+        setPOSEnvironments(true, envs);
+    }
+
+    public void setSecurityCharacteristics(boolean value, SecurityCharacteristic ... securityCharacteristics){
+        setFlags(value, securityCharacteristics);
+    }
+
+    public void unsetSecurityCharacteristics(SecurityCharacteristic ... envs){
+        setSecurityCharacteristics(false, envs);
+    }
+
+    public void setSecurityCharacteristics(SecurityCharacteristic ... envs){
+        setSecurityCharacteristics(true, envs);
+    }
+
+
 }

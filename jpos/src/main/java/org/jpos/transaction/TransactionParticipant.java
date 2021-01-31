@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -42,7 +42,7 @@ public interface TransactionParticipant extends TransactionConstants {
      * @param id the Transaction identifier
      * @param context transaction context
      */
-    void commit(long id, Serializable context);
+    default void commit(long id, Serializable context) { }
 
     /**
      * Called by TransactionManager upon transaction commit.
@@ -52,6 +52,5 @@ public interface TransactionParticipant extends TransactionConstants {
      * @param id the Transaction identifier
      * @param context transaction context
      */
-    void abort(long id, Serializable context);
+    default void abort(long id, Serializable context) { }
 }
-

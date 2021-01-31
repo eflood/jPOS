@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,6 +19,8 @@
 package org.jpos.space;
 
 import java.io.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
@@ -39,8 +41,10 @@ import com.sleepycat.persist.model.Relationship;
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
+import org.jpos.iso.ISOUtil;
 import org.jpos.util.Log;
 import org.jpos.util.Loggeable;
+import org.jpos.util.Profiler;
 
 /**
  * BerkeleyDB Jave Edition based persistent space implementation
@@ -59,22 +63,25 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
     Semaphore gcSem = new Semaphore(1);
     LocalSpace<Object,SpaceListener> sl;
     private static final long NRD_RESOLUTION = 500L;
-    public static final long GC_DELAY = 60*1000L;
+    public static final long GC_DELAY = 15*1000L;
+    public static final long DEFAULT_TXN_TIMEOUT = 30*1000L;
+    public static final long DEFAULT_LOCK_TIMEOUT = 120*1000L;
     private Future gcTask;
 
     static final Map<String,Space> spaceRegistrar = 
         new HashMap<String,Space> ();
 
-    public JESpace(String name, String path) throws SpaceError {
+    public JESpace(String name, String params) throws SpaceError {
         super();
         try {
             EnvironmentConfig envConfig = new EnvironmentConfig();
             StoreConfig storeConfig = new StoreConfig();
-
+            String[] p = ISOUtil.commaDecode(params);
+            String path = p[0];
             envConfig.setAllowCreate (true);
             envConfig.setTransactional(true);
-            // envConfig.setTxnTimeout(5L, TimeUnit.MINUTES);
-            envConfig.setLockTimeout(5, TimeUnit.SECONDS);
+            envConfig.setLockTimeout(getParam("lock.timeout", p, DEFAULT_LOCK_TIMEOUT), TimeUnit.MILLISECONDS);
+            envConfig.setTxnTimeout(getParam("txn.timeout", p, DEFAULT_TXN_TIMEOUT), TimeUnit.MILLISECONDS);
             storeConfig.setAllowCreate (true);
             storeConfig.setTransactional (true);
 
@@ -168,13 +175,13 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
     @SuppressWarnings("unchecked")
     public synchronized V in (Object key, long timeout) {
         Object obj;
-        long now = System.currentTimeMillis();
-        long end = now + timeout;
+        Instant now = Instant.now();
+        long duration;
         while ((obj = inp (key)) == null &&
-                (now = System.currentTimeMillis()) < end)
+                (duration = Duration.between(now, Instant.now()).toMillis()) < timeout)
         {
             try {
-                this.wait (end - now);
+                this.wait (timeout - duration);
             } catch (InterruptedException ignored) { }
         }
         return (V) obj;
@@ -193,13 +200,13 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
     @SuppressWarnings("unchecked")
     public synchronized V rd  (Object key, long timeout) {
         Object obj;
-        long now = System.currentTimeMillis();
-        long end = now + timeout;
+        Instant now = Instant.now();
+        long duration;
         while ((obj = rdp (key)) == null &&
-                (now = System.currentTimeMillis()) < end)
+                (duration = Duration.between(now, Instant.now()).toMillis()) < timeout)
         {
             try {
-                this.wait (end - now);
+                this.wait (timeout - duration);
             } catch (InterruptedException ignored) { }
         }
         return (V) obj;
@@ -213,13 +220,13 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
     }
     public synchronized V nrd  (Object key, long timeout) {
         Object obj;
-        long now = System.currentTimeMillis();
-        long end = now + timeout;
+        Instant now = Instant.now();
+        long duration;
         while ((obj = rdp (key)) != null &&
-                (now = System.currentTimeMillis()) < end)
+                (duration = Duration.between(now, Instant.now()).toMillis()) < timeout)
         {
             try {
-                this.wait (Math.min(NRD_RESOLUTION, end - now));
+                this.wait (Math.min(NRD_RESOLUTION, timeout - duration));
             } catch (InterruptedException ignored) { }
         }
         return (V) obj;
@@ -242,14 +249,14 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
         return false;
     }
     public boolean existAny (Object[] keys, long timeout) {
-        long now = System.currentTimeMillis();
-        long end = now + timeout;
-        while ((now = System.currentTimeMillis()) < end) {
+        Instant now = Instant.now();
+        long duration;
+        while ((duration = Duration.between(now, Instant.now()).toMillis()) < timeout) {
             if (existAny (keys))
                 return true;
             synchronized (this) {
                 try {
-                    wait (end - now);
+                    wait (timeout - duration);
                 } catch (InterruptedException ignored) { }
             }
         }
@@ -273,7 +280,7 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
                 return;
             txn = dbe.beginTransaction (null, null);
             cursor = gcsIndex.entities (
-                txn, 0L, true, System.currentTimeMillis(), false, null
+                txn, 0L, true, Instant.now().toEpochMilli(), false, null
             );
             for (GCRef gcRef: cursor) {
                 pIndex.delete (gcRef.getId());
@@ -300,7 +307,7 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
     public void run() {
         try {
             gc();
-        } catch (DatabaseException e) {
+        } catch (Exception e) {
             warn(e);
         }
     }
@@ -480,7 +487,7 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
             this.key = key;
             this.value =  serialize (value);
             if (timeout > 0L)
-                this.expires = System.currentTimeMillis() + timeout;
+                this.expires = Instant.now().toEpochMilli() + timeout;
         }
         public long getId() {
             return id;
@@ -489,7 +496,7 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
             this.id = -this.id;
         }
         public boolean isExpired () {
-            return expires > 0L && expires < System.currentTimeMillis ();
+            return expires > 0L && expires < Instant.now().toEpochMilli();
         }
         public boolean isActive () {
             return !isExpired();
@@ -589,6 +596,17 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
             p.printf ("%s<key>%s</key>\n", indent, key);
     }
 
+    private long getParam (String name, String[] params, long defaultValue) {
+        for (String s : params) {
+            if (s.contains(name)) {
+                int pos = s.indexOf('=');
+                if (pos >=0 && s.length() > pos)
+                    return Long.valueOf(s.substring(pos+1).trim());
+            }
+        }
+        return defaultValue;
+    }
+
     @Entity
     public static class GCRef {
         @PrimaryKey
@@ -607,7 +625,7 @@ public class JESpace<K,V> extends Log implements LocalSpace<K,V>, Loggeable, Run
             return id;
         }
         public boolean isExpired () {
-            return expires > 0L && expires < System.currentTimeMillis ();
+            return expires > 0L && expires < Instant.now().toEpochMilli();
         }
         public long getExpiration () {
             return expires;

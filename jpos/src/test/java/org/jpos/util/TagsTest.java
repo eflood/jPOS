@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,16 +18,16 @@
 
 package org.jpos.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TagsTest {
     @Test
@@ -46,6 +46,15 @@ public class TagsTest {
     public void testEscape () {
         Tags ts = new Tags("d\\,ef,abc\\\\");
         assertEquals("abc\\\\,d\\,ef", ts.toString());
+    }
+
+    @Test
+    public void testNullTags() {
+        Tags ts = new Tags((String) null);
+        assertEquals(0, ts.size(), "size=0");
+        assertEquals(new Tags(), ts, "empty tags");
+        assertEquals(new Tags(""), ts, "empty tags \"\"");
+        assertEquals(new Tags(" "), ts, "empty tags (blank)");
     }
 
     @Test

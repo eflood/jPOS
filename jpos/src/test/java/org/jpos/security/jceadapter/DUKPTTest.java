@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,8 @@
 
 package org.jpos.security.jceadapter;
 
-import junit.framework.TestCase;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import org.jpos.core.ConfigurationException;
 import org.jpos.core.SimpleConfiguration;
 import org.jpos.iso.ISOUtil;
@@ -33,12 +34,13 @@ import org.jpos.util.LogEvent;
 import org.jpos.util.LogSource;
 import org.jpos.util.Logger;
 import org.jpos.util.SimpleLogListener;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Properties;
 
-public class DUKPTTest extends TestCase
-{
+public class DUKPTTest {
     JCESecurityModule sm;
     SecureKeyStore ks;
     Log log;
@@ -59,6 +61,7 @@ public class DUKPTTest extends TestCase
     public static final byte[] BDK =
             ISOUtil.hex2byte("0123456789ABCDEFFEDCBA9876543210");
 
+    @BeforeEach
     public void setUp() throws Exception
     {
         initLogger();
@@ -66,6 +69,7 @@ public class DUKPTTest extends TestCase
         initKS();
     }
 
+    @Test
     public void test_DUKPT() throws Exception
     {
         test_DUKPT ("test-bdk", new KeySerialNumber ("987654", "3210", "E00002"), ISOUtil.hex2byte ("B76997F83C1479DB"), PAN);
@@ -115,6 +119,21 @@ public class DUKPTTest extends TestCase
         test_DUKPT ("test-bdk", new KeySerialNumber ("987654", "3210", "EFFA00"), ISOUtil.hex2byte ("849763B43E5F9CFF"), PAN,true);
         test_DUKPT ("test-bdk", new KeySerialNumber ("987654", "3210", "EFFC00"), ISOUtil.hex2byte ("DEFC6F09F8927B71"), PAN,true);
         test_DUKPT ("test-bdk", new KeySerialNumber ("987654", "3210", "F00000"), ISOUtil.hex2byte ("73EC88AD0AC5830E"), PAN,true);
+        test_DUKPT ("test-bdk", new KeySerialNumber ("9876543210", "0000", "400002"), ISOUtil.hex2byte ("AEF0F261B1222EB1"), PAN,true);
+    }
+
+    @Test
+    public void test_dataEncrypt() throws Exception {
+        SecureDESKey bdk = (SecureDESKey) ks.getKey("test-bdk");
+        byte[] original = "The quick brown fox jumps over the lazy dog".getBytes();
+        byte[] cryptogram = sm.dataEncrypt(bdk, original);
+        byte[] cleartext = sm.dataDecrypt(bdk, cryptogram);
+        assertEqual(original, cleartext);
+        cryptogram[0] = (byte) (cryptogram[0] ^ 0xAA);
+        try {
+            sm.dataDecrypt(bdk, cryptogram);
+            fail("SMException not raised");
+        } catch (Exception ignored) { }
     }
 
     private void test_DUKPT(String keyName, KeySerialNumber ksn, byte[] pinUnderDukpt, String pan)
@@ -131,7 +150,7 @@ public class DUKPTTest extends TestCase
         EncryptedPIN pin = new EncryptedPIN(
                 pinUnderDukpt, SMAdapter.FORMAT01, pan
         );
-        SecureDESKey bdk = (SecureDESKey) ks.getKey(keyName);
+        SecureDESKey bdk = ks.getKey(keyName);
         evt.addMessage(pin);
         evt.addMessage(ksn);
         evt.addMessage(bdk);

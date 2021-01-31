@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,14 +18,15 @@
 
 package org.jpos.q2.iso;
 
+import org.HdrHistogram.AtomicHistogram;
 import org.jdom2.Element;
 import org.jpos.core.ConfigurationException;
+import org.jpos.core.Environment;
 import org.jpos.iso.*;
 import org.jpos.q2.QBeanSupport;
 import org.jpos.q2.QFactory;
 import org.jpos.space.*;
-import org.jpos.util.Loggeable;
-import org.jpos.util.NameRegistrar;
+import org.jpos.util.*;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -39,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings("unchecked")
 public class QMUX
     extends QBeanSupport
-    implements SpaceListener, MUX, QMUXMBean, Loggeable
+    implements SpaceListener, MUX, QMUXMBean, Loggeable, MetricsProvider
 {
     static final String nomap = "0123456789";
     static final String DEFAULT_KEY = "41, 11";
@@ -50,30 +51,46 @@ public class QMUX
     protected String ignorerc;
     protected String[] mtiMapping;
     private boolean headerIsKey;
+    private boolean returnRejects;
     private LocalSpace isp; // internal space
+    private Map<String,String[]> mtiKey = new HashMap<>();
+    private Metrics metrics = new Metrics(new AtomicHistogram(60000, 2));
 
     List<ISORequestListener> listeners;
-    int rx, tx, rxExpired, txExpired, rxPending, rxUnhandled, rxForwarded;
-    long lastTxn = 0L;
-    boolean listenerRegistered;
+    private volatile int rx, tx, rxExpired, txExpired, rxPending, rxUnhandled, rxForwarded;
+    private volatile long lastTxn = 0L;
+    private boolean listenerRegistered;
     public QMUX () {
         super ();
-        listeners = new ArrayList<ISORequestListener>();
+        listeners = new ArrayList<>();
     }
     public void initService () throws ConfigurationException {
         Element e = getPersist ();
         sp        = grabSpace (e.getChild ("space"));
         isp       = cfg.getBoolean("reuse-space", false) ? sp : new TSpace();
-        in        = e.getChildTextTrim ("in");
-        out       = e.getChildTextTrim ("out");
-        ignorerc  = e.getChildTextTrim ("ignore-rc");
-        key = toStringArray(e.getChildTextTrim("key"), ", ", DEFAULT_KEY);
-        ready     = toStringArray(e.getChildTextTrim ("ready"));
-        mtiMapping = toStringArray(e.getChildTextTrim ("mtimapping"));
+        in        = Environment.get(e.getChildTextTrim ("in"));
+        out       = Environment.get(e.getChildTextTrim ("out"));
+
+        if (in == null || out == null) {
+            throw new ConfigurationException ("Misconfigured QMUX. Please verify in/out queues");
+        }
+        ignorerc  = Environment.get(e.getChildTextTrim ("ignore-rc"));
+        key = toStringArray(DEFAULT_KEY, ", ", null);
+        returnRejects = cfg.getBoolean("return-rejects", false);
+        for (Element keyElement : e.getChildren("key")) {
+            String mtiOverride = QFactory.getAttributeValue(keyElement, "mti");
+            if (mtiOverride != null && mtiOverride.length() >= 2) {
+                mtiKey.put (mtiOverride.substring(0,2), toStringArray(keyElement.getTextTrim(), ", ", null));
+            } else {
+                key = toStringArray(e.getChildTextTrim("key"), ", ", DEFAULT_KEY);
+            }
+        }
+        ready     = toStringArray(Environment.get(e.getChildTextTrim ("ready")));
+        mtiMapping = toStringArray(Environment.get(e.getChildTextTrim ("mtimapping")));
         if (mtiMapping == null || mtiMapping.length != 3) 
-            mtiMapping = new String[] { nomap, nomap, "0022446789" };
+            mtiMapping = new String[] { nomap, nomap, "0022446689" };
         addListeners ();
-        unhandled = e.getChildTextTrim ("unhandled");
+        unhandled = Environment.get(e.getChildTextTrim ("unhandled"));
         NameRegistrar.register ("mux."+getName (), this);
     }
     public void startService () {
@@ -115,16 +132,19 @@ public class QMUX
     public ISOMsg request (ISOMsg m, long timeout) throws ISOException {
         String key = getKey (m);
         String req = key + ".req";
-        if (isp.rdp (req) != null)
-            throw new ISOException ("Duplicate key '" + req + "' detected");
-        isp.out (req, m);
+        synchronized (isp) {
+            if (isp.rdp (req) != null)
+                throw new ISOException ("Duplicate key '" + req + "' detected");
+            isp.out (req, m);
+        }
         m.setDirection(0);
+        Chronometer c = new Chronometer();
         if (timeout > 0)
             sp.out (out, m, timeout);
         else
             sp.out (out, m);
 
-        ISOMsg resp = null;
+        ISOMsg resp;
         try {
             synchronized (this) { tx++; rxPending++; }
 
@@ -151,32 +171,81 @@ public class QMUX
         } finally {
             synchronized (this) { rxPending--; }
         }
+        long elapsed = c.elapsed();
+        metrics.record("all", elapsed);
+        if (resp != null)
+            metrics.record("ok", elapsed);
         return resp;
     }
+    public void request (ISOMsg m, long timeout, ISOResponseListener rl, Object handBack)
+      throws ISOException
+    {
+        String key = getKey (m);
+        String req = key + ".req";
+        synchronized (isp) {
+            if (isp.rdp (req) != null)
+                throw new ISOException ("Duplicate key '" + req + "' detected.");
+            m.setDirection(0);
+            AsyncRequest ar = new AsyncRequest (rl, handBack);
+            synchronized (ar) {
+                if (timeout > 0)
+                    ar.setFuture(getScheduledThreadPoolExecutor().schedule(ar, timeout, TimeUnit.MILLISECONDS));
+            }
+            isp.out (req, ar, timeout);
+        }
+        if (timeout > 0)
+            sp.out (out, m, timeout);
+        else
+            sp.out (out, m);
+        synchronized (this) { tx++; rxPending++; }
+    }
+
+    protected boolean isNotifyEligible(ISOMsg msg) {
+        if (returnRejects)
+            return true;
+
+        try {
+            return msg.isResponse();
+        } catch (RuntimeException | ISOException ex) {
+            // * ArrayIndexOutOfBoundsException - It may occur for messages where
+            // MTI is not standard 4 characters (eg. FSDISOMsg), then notification is expected.
+            // * ISOException: When there is no field 0, the error should be logged
+            return true;
+        }
+    }
+
+    @Override
     public void notify (Object k, Object value) {
         Object obj = sp.inp (k);
         if (obj instanceof ISOMsg) {
             ISOMsg m = (ISOMsg) obj;
             try {
-                String key = getKey (m);
-                String req = key + ".req";
-                Object r = isp.inp (req);
-                if (r != null) {
-                    if (r instanceof AsyncRequest) {
-                        ((AsyncRequest) r).responseReceived (m);
-                    } else {
-                        isp.out (key, m);
+                if (isNotifyEligible(m)) {
+                    String key = getKey (m);
+                    String req = key + ".req";
+                    Object r = isp.inp (req);
+                    if (r != null) {
+                        if (r instanceof AsyncRequest) {
+                            ((AsyncRequest) r).responseReceived (m);
+                        } else {
+                            isp.out (key, m);
+                        }
+                        return;
                     }
-                    return;
                 }
-            } catch (ISOException e) { 
-                getLog().warn ("notify", e);
+            } catch (ISOException e) {
+                LogEvent evt = getLog().createLogEvent("notify");
+                evt.addMessage(e);
+                evt.addMessage(obj);
+                Logger.log(evt);
             }
             processUnhandled (m);
         }
     }
 
     public String getKey (ISOMsg m) throws ISOException {
+        if (out == null)
+            throw new NullPointerException ("Misconfigured QMUX. Please verify out queue is not null.");
         StringBuilder sb = new StringBuilder (out);
         sb.append ('.');
         sb.append (mapMTI(m.getMTI()));
@@ -186,7 +255,8 @@ public class QMUX
             sb.append ('.');
         }
         boolean hasFields = false;
-        for (String f : key) {
+        String[] k = mtiKey.getOrDefault(m.getMTI().substring(0,2), key);
+        for (String f : k) {
             String v = m.getString(f);
             if (v != null) {
                 if ("11".equals(f)) {
@@ -206,6 +276,12 @@ public class QMUX
             throw new ISOException ("Key fields not found - not sending " + sb.toString());
         return sb.toString();
     }
+
+    @Override
+    public Metrics getMetrics() {
+        return metrics;
+    }
+
     private String mapMTI (String mti) throws ISOException {
         StringBuilder sb = new StringBuilder();
         if (mti != null) {
@@ -248,37 +324,20 @@ public class QMUX
     public String getUnhandledQueue () {
         return unhandled;
     }
-    public void request (ISOMsg m, long timeout, ISOResponseListener rl, Object handBack)
-        throws ISOException 
-    {
-        String key = getKey (m);
-        String req = key + ".req";
-        if (isp.rdp (req) != null)
-            throw new ISOException ("Duplicate key '" + req + "' detected.");
-        m.setDirection(0);
-        AsyncRequest ar = new AsyncRequest (rl, handBack);
-        synchronized (ar) {
-            if (timeout > 0)
-                ar.setFuture(getScheduledThreadPoolExecutor().schedule(ar, timeout, TimeUnit.MILLISECONDS));
-        }
-        isp.out (req, ar, timeout);
-        sp.out (out, m, timeout);
-    }
     @SuppressWarnings("unused")
     public String[] getReadyIndicatorNames() {
         return ready;
     }
-    private void addListeners () 
-        throws ConfigurationException
-    {
+
+    private void addListeners() throws ConfigurationException {
+        List<Element> rlisten = getPersist().getChildren("request-listener");
+        if (rlisten.isEmpty())
+            return;
+
         QFactory factory = getFactory ();
-        Iterator iter = getPersist().getChildren (
-            "request-listener"
-        ).iterator();
-        while (iter.hasNext()) {
-            Element l = (Element) iter.next();
+        for (Element l : rlisten) {
             ISORequestListener listener = (ISORequestListener) 
-                factory.newInstance (l.getAttributeValue ("class"));
+                factory.newInstance (QFactory.getAttributeValue (l, "class"));
             factory.setLogger        (listener, l);
             factory.setConfiguration (listener, l);
             addISORequestListener (listener);
@@ -298,12 +357,12 @@ public class QMUX
         StringBuffer sb = new StringBuffer();
         append (sb, "tx=", tx);
         append (sb, ", rx=", rx);
-        append (sb, ", tx_expired=", txExpired);
-        append (sb, ", tx_pending=", sp.size(out));
-        append (sb, ", rx_expired=", rxExpired);
-        append (sb, ", rx_pending=", rxPending);
-        append (sb, ", rx_unhandled=", rxUnhandled);
-        append (sb, ", rx_forwarded=", rxForwarded);
+        append (sb, ", tx_expired=", getTXExpired());
+        append (sb, ", tx_pending=", getTXPending());
+        append (sb, ", rx_expired=", getRXExpired());
+        append (sb, ", rx_pending=", getRXPending());
+        append (sb, ", rx_unhandled=", getRXUnhandled());
+        append (sb, ", rx_forwarded=", getRXForwarded());
         sb.append (", connected=");
         sb.append (Boolean.toString(isConnected()));
         sb.append (", last=");
@@ -323,6 +382,36 @@ public class QMUX
         return rx;
     }
 
+    @Override
+    public int getTXExpired() {
+        return txExpired;
+    }
+
+    @Override
+    public int getTXPending() {
+        return sp.size(out);
+    }
+
+    @Override
+    public int getRXExpired() {
+        return rxExpired;
+    }
+
+    @Override
+    public int getRXPending() {
+        return rxPending;
+    }
+
+    @Override
+    public int getRXUnhandled() {
+        return rxUnhandled;
+    }
+
+    @Override
+    public int getRXForwarded() {
+        return rxForwarded;
+    }
+
     public long getLastTxnTimestampInMillis() {
         return lastTxn;
     }
@@ -331,7 +420,8 @@ public class QMUX
     }
 
     protected void processUnhandled (ISOMsg m) {
-        ISOSource source = m.getSource () != null ? m.getSource() : this;
+        ISOSource source = m.getSource();
+        source = source != null ? source : this;
         Iterator iter = listeners.iterator();
         if (iter.hasNext())
             synchronized (this) { rxForwarded++; }
@@ -379,6 +469,7 @@ public class QMUX
     }
     public void dump (PrintStream p, String indent) {
         p.println (indent + getCountersAsString());
+        metrics.dump (p, indent);
     }
     private String[] toStringArray(String s, String delimiter, String def) {
         if (s == null)
@@ -419,23 +510,38 @@ public class QMUX
         sb.append (name);
         sb.append (value);
     }
-    public static class AsyncRequest implements Runnable {
+    public class AsyncRequest implements Runnable {
         ISOResponseListener rl;
         Object handBack;
         ScheduledFuture future;
+        Chronometer chrono;
         public AsyncRequest (ISOResponseListener rl, Object handBack) {
             super();
             this.rl = rl;
             this.handBack = handBack;
+            this.chrono = new Chronometer();
         }
         public void setFuture(ScheduledFuture future) {
             this.future = future;
         }
         public void responseReceived (ISOMsg response) {
-            if (future == null || future.cancel(false))
-                rl.responseReceived (response, handBack);
+            if (future == null || future.cancel(false)) {
+                synchronized (QMUX.this) {
+                    rx++;
+                    rxPending--;
+                    lastTxn = System.currentTimeMillis();
+                }
+                long elapsed = chrono.elapsed();
+                metrics.record("all", elapsed);
+                metrics.record("ok", elapsed);
+                rl.responseReceived(response, handBack);
+            }
         }
         public void run() {
+            synchronized(QMUX.this) {
+                rxPending--;
+            }
+            metrics.record("all", chrono.elapsed());
             rl.expired(handBack);
         }
     }

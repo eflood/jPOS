@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -68,23 +68,23 @@ public class ThreadPool extends ThreadGroup implements LogSource, Loggeable, Con
                     Object job = pool.dequeue();
                     if (job instanceof Runnable) {
                         setName (name + "-running");
-                        synchronized (this) {
+                        synchronized (ThreadPool.this) {
                             currentJob = job;
+                            active++;
                         }
                         try {
-                            active++;
                             ((Runnable) job).run();
                             setName (name + "-idle");
                         } catch (Throwable t) {
                             setName (name + "-idle-"+t.getMessage());
                         }
-                        synchronized (this) {
+                        synchronized (ThreadPool.this) {
                             currentJob = null;
                             available++;
                             active--;
                         }
                     } else {
-                        synchronized (this) {
+                        synchronized (ThreadPool.this) {
                             currentJob = null;
                             available++;
                         }
@@ -163,7 +163,6 @@ public class ThreadPool extends ThreadGroup implements LogSource, Loggeable, Con
         p.println (inner  + "<jobs>" + getJobCount() + "</jobs>");
         p.println (inner  + "<size>" + getPoolSize() + "</size>");
         p.println (inner  + "<max>"  + getMaxPoolSize() + "</max>");
-        p.println (inner  + "<active>" + getActiveCount() + "</active>");
         p.println (inner  + "<idle>"  + getIdleCount() + "</idle>");
         p.println (inner  + "<active>"  + getActiveCount() + "</active>");
         p.println (inner  + "<pending>" + getPendingCount() + "</pending>");

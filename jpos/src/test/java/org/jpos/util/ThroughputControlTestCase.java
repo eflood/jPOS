@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,76 +18,85 @@
 
 package org.jpos.util;
 
-import junit.framework.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
+import java.time.Instant;
 
 
-public class ThroughputControlTestCase extends TestCase {
+public class ThroughputControlTestCase {
+    @Test
     public void testSingleThread () throws Exception {
         ThroughputControl tc = new ThroughputControl (2, 1000);
-        long start = System.currentTimeMillis();
-        assertTrue ("Control should return 0L", tc.control() == 0L);
+        Instant start = Instant.now();
+        assertTrue (tc.control() == 0L, "Control should return 0L");
         assertTrue (
-            "Elapsed time should be less than one second", 
-            System.currentTimeMillis() - start < 1000L
+                Duration.between(start, Instant.now()).toMillis() < 1000L,
+                "Elapsed time should be less than one second"
         );
         tc.control();
         assertTrue (
-            "Elapsed time should still be less than one second", 
-            System.currentTimeMillis() - start < 1000L
+                Duration.between(start, Instant.now()).toMillis() < 1000L,
+                "Elapsed time should still be less than one second"
         );
         tc.control();
         assertTrue (
-            "Elapsed time should be greater than one second", 
-            System.currentTimeMillis() - start > 1000L
+                Duration.between(start, Instant.now()).toMillis() > 1000L,
+                "Elapsed time should be greater than one second"
         );
         tc.control();
         assertTrue (
-            "second transaction should be less than two seconds", 
-            System.currentTimeMillis() - start < 2000L
+                Duration.between(start, Instant.now()).toMillis() < 2000L,
+                "second transaction should be less than two seconds"
         );
     }
+    @Test
     public void testFifty () throws Exception {
         ThroughputControl tc = new ThroughputControl (10, 1000);
-        long start = System.currentTimeMillis();
+        Instant start = Instant.now();
         for (int i=0; i<50; i++)
             tc.control();
 
-        long elapsed =  System.currentTimeMillis() - start;
+        long elapsed = Duration.between(start, Instant.now()).toMillis();
         assertTrue (
-            "50 transactions should take at least 4 seconds but took " + elapsed, 
-            elapsed >= 4000L
+            elapsed >= 4000L,
+            "50 transactions should take at least 4 seconds but took " + elapsed
         );
         assertTrue (
-            "50 transactions shouldn't take more than aprox 4 seconds but took " + elapsed, 
-            elapsed < 4300L
+            elapsed < 4500L,
+            "50 transactions shouldn't take more than aprox 4 seconds but took " + elapsed
         );
     }
+    @Test
     public void testDualPeriod () throws Exception {
         ThroughputControl tc = new ThroughputControl (
             new int[] { 100, 150 }, 
             new int[] { 1000, 5000 }
         );
-        long start = System.currentTimeMillis();
+        Instant start = Instant.now();
         for (int i=0; i<100; i++)
             tc.control();
 
-        long elapsed =  System.currentTimeMillis() - start;
+        long elapsed = Duration.between(start, Instant.now()).toMillis();
         assertTrue (
-            "100 initial transactions should take more than about one second but took " + elapsed, 
-            elapsed <= 1000L
+            elapsed <= 1000L,
+            "100 initial transactions should take more than about one second but took " + elapsed
         );
         for (int i=0; i<100; i++)
             tc.control();
 
-        elapsed =  System.currentTimeMillis() - start;
+        elapsed = Duration.between(start, Instant.now()).toMillis();
         assertTrue (
-            "100 additional transactions should take more than five seconds but took " + elapsed, 
-            elapsed > 5000L
+            elapsed >= 5000L,
+            "100 additional transactions should take more than five seconds but took " + elapsed
         );
     }
+    @Test
     public void testMultiThread() throws Exception {
         final ThroughputControl tc = new ThroughputControl (2, 1000);
-        long start = System.currentTimeMillis();
+        Instant start = Instant.now();
         Thread[] t = new Thread[10];
         for (int i=0; i<10; i++) {
             t[i] = new Thread() {
@@ -100,10 +109,10 @@ public class ThroughputControlTestCase extends TestCase {
         for (int i=0; i<10; i++) {
             t[i].join();
         }
-        long elapsed =  System.currentTimeMillis() - start;
+        long elapsed = Duration.between(start, Instant.now()).toMillis();
         assertTrue (
-            "10 transactions should take about four seconds but took " + elapsed, 
-            elapsed > 4000L && elapsed < 5000L
+            elapsed > 4000L && elapsed < 5000L,
+            "10 transactions should take about four seconds but took " + elapsed
         );
     }
 }

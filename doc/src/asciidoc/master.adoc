@@ -1,12 +1,21 @@
 jPOS Programmer's Guide
 =======================
-:author: Alejandro Revilla
+:doctype: book
+:author: jPOS Software SRL
 :email: apr@jpos.org
 :revdate: {localdate}
-:revnumber: 2.0.0
-:jpos_version: 2.0.6
-:jpos_snapshot_version: 2.0.7-SNAPSHOT
+:revnumber: 2.1.5
+:jpos_version: 2.1.4
+:jpos_snapshot_version: 2.1.5-SNAPSHOT
 :toc:
+:source-highlighter: rouge
+:listing-caption: Listing
+:pdf-page-size: A4
+:icons: font
+:pdf-theme: jposbook
+:pdf-themesdir: {docdir}
+:sectnums:
+:sectnumlevels: 3
 
 :leveloffset: 1
 include::legal/copyright.adoc[]
@@ -25,6 +34,7 @@ include::ch01/running.adoc[]
 = About ISO-8583
 include::ch02/iso8583.adoc[]
 include::ch02/jposiso.adoc[]
+include::ch02/incoming_listener.adoc[]
 
 = Support classes
 include::ch03/logger.adoc[]
@@ -63,6 +73,7 @@ include::ch06/space_util.adoc[]
 = Q2
 include::ch07/intro.adoc[]
 include::ch07/running.adoc[]
+include::ch07/embedding.adoc[]
 include::ch07/shutdown.adoc[]
 include::ch07/writing_first_script.adoc[]
 include::ch07/qtest.adoc[]
@@ -85,7 +96,12 @@ include::ch09/assembly_line.adoc[]
 include::ch09/abort_participant.adoc[]
 include::ch09/group_selector.adoc[]
 include::ch09/transaction_manager.adoc[]
-include::ch09/jsparticipant.adoc[]
+include::ch09/transaction_participants.adoc[]
+
+= ResultCode
+include::ch10/intro.adoc[]
+include::ch10/cmf.adoc[]
+include::ch10/result.adoc[]
 
 //include::ch02.adociidoc[]
 //include::ch03.adociidoc[]

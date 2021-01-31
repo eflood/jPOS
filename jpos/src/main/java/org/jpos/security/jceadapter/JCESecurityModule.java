@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,6 +21,7 @@ package  org.jpos.security.jceadapter;
 import org.javatuples.Pair;
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
+import org.jpos.core.Environment;
 import org.jpos.iso.ISODate;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOUtil;
@@ -37,24 +38,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
-import java.security.SecureRandom;
-import java.security.Security;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
-import java.util.TreeMap;
+import java.nio.ByteBuffer;
+import java.security.*;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.crypto.Cipher;
-
 
 /**
  * JCESecurityModule is an implementation of a security module in software.
@@ -77,8 +66,7 @@ import javax.crypto.Cipher;
  * @version $Revision$ $Date$
  */
 @SuppressWarnings("unchecked")
-public class JCESecurityModule extends BaseSMAdapter {
-
+public class JCESecurityModule extends BaseSMAdapter<SecureDESKey> {
     /**
      * Pattern representing key type string value.
      */
@@ -156,11 +144,13 @@ public class JCESecurityModule extends BaseSMAdapter {
      */
     public JCESecurityModule (String lmkFile) throws SMException
     {
+        Objects.requireNonNull(lmkFile);
         init(null, lmkFile, false);
     }
 
     public JCESecurityModule (String lmkFile, String jceProviderClassName) throws SMException
     {
+        Objects.requireNonNull(lmkFile);
         init(jceProviderClassName, lmkFile, false);
     }
 
@@ -190,7 +180,7 @@ public class JCESecurityModule extends BaseSMAdapter {
     public void setConfiguration (Configuration cfg) throws ConfigurationException {
         this.cfg = cfg;
         try {
-            init(cfg.get("provider"), cfg.get("lmk"), cfg.getBoolean("rebuildlmk"));
+            init(cfg.get("provider"), cfg.get("lmk", null), cfg.getBoolean("rebuildlmk"));
         } catch (SMException e) {
             throw  new ConfigurationException(e);
         }
@@ -373,7 +363,7 @@ public class JCESecurityModule extends BaseSMAdapter {
         return new String(bhc);
     }
 
-    private Key concatKeys(SecureDESKey keyA, SecureDESKey keyB)
+    protected Key concatKeys(SecureDESKey keyA, SecureDESKey keyB)
             throws SMException {
         if ( keyA!=null && keyA.getKeyLength()==SMAdapter.LENGTH_DES
           && keyB!=null && keyB.getKeyLength()==SMAdapter.LENGTH_DES) {
@@ -389,13 +379,13 @@ public class JCESecurityModule extends BaseSMAdapter {
         return null;
     }
 
-    private String calculateCVV(String accountNo, Key cvk, Date expDate,
+    protected String calculateCVV(String accountNo, Key cvk, Date expDate,
                                 String serviceCode) throws SMException {
         String ed = ISODate.formatDate(expDate, "yyMM");
         return calculateCVD(accountNo, cvk, ed, serviceCode);
     }
 
-    private String calculateCVD(String accountNo, Key cvk, String expDate,
+    protected String calculateCVD(String accountNo, Key cvk, String expDate,
                                 String serviceCode) throws SMException {
         Key udka = jceHandler.formDESKey(SMAdapter.LENGTH_DES
                 ,Arrays.copyOfRange(cvk.getEncoded(), 0, 8));
@@ -419,6 +409,12 @@ public class JCESecurityModule extends BaseSMAdapter {
     protected String calculateCVVImpl(String accountNo, SecureDESKey cvkA, SecureDESKey cvkB,
                                    Date expDate, String serviceCode) throws SMException {
         return calculateCVV(accountNo,concatKeys(cvkA, cvkB),expDate,serviceCode);
+    }
+
+    @Override
+    protected String calculateCVDImpl(String accountNo, SecureDESKey cvkA, SecureDESKey cvkB,
+                                   String expDate, String serviceCode) throws SMException {
+        return calculateCVD(accountNo, concatKeys(cvkA, cvkB), expDate, serviceCode);
     }
 
     protected void checkCAVVArgs(String upn, String authrc, String sfarc)
@@ -456,6 +452,13 @@ public class JCESecurityModule extends BaseSMAdapter {
     }
 
     @Override
+    protected boolean verifyCVVImpl(String accountNo, SecureDESKey cvkA, SecureDESKey cvkB,
+                     String cvv, String expDate, String serviceCode) throws SMException {
+        String result = calculateCVD(accountNo, concatKeys(cvkA, cvkB), expDate, serviceCode);
+        return result.equals(cvv);
+    }
+
+    @Override
     protected boolean verifyCAVVImpl(String accountNo, SecureDESKey cvk, String cavv,
                      String upn, String authrc, String sfarc) throws SMException {
         checkCAVVArgs(upn, authrc,sfarc);
@@ -464,22 +467,35 @@ public class JCESecurityModule extends BaseSMAdapter {
     }
 
     protected String calculatedCVV(String accountNo, SecureDESKey imkac,
-                     Date expDate, String serviceCode, byte[] atc, MKDMethod mkdm)
+                     String expDate, String serviceCode, byte[] atc, MKDMethod mkdm)
                      throws SMException {
 
         if (mkdm==null)
           mkdm = MKDMethod.OPTION_A;
+
         byte[] panpsn = formatPANPSN_dCVD(accountNo, null, mkdm);
         Key mkac = deriveICCMasterKey(decryptFromLMK(imkac), panpsn);
 
         String alteredPAN = ISOUtil.hexString(atc) + accountNo.substring(4);
 
-        return calculateCVV(alteredPAN, mkac, expDate, serviceCode);
+        return calculateCVD(alteredPAN, mkac, expDate, serviceCode);
     }
 
     @Override
     protected boolean verifydCVVImpl(String accountNo, SecureDESKey imkac, String dcvv,
                      Date expDate, String serviceCode, byte[] atc, MKDMethod mkdm)
+                     throws SMException {
+
+        String ed = ISODate.formatDate(expDate, "yyMM");
+        String res = calculatedCVV(accountNo, imkac, ed,
+                serviceCode, atc, mkdm
+        );
+        return res.equals(dcvv);
+    }
+
+    @Override
+    protected boolean verifydCVVImpl(String accountNo, SecureDESKey imkac, String dcvv,
+                     String expDate, String serviceCode, byte[] atc, MKDMethod mkdm)
                      throws SMException {
 
         String res = calculatedCVV(accountNo, imkac, expDate,
@@ -704,7 +720,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @return derived 16-bytes ICC Master Key with adjusted DES parity
      * @throws JCEHandlerException
      */
-    private Key deriveICCMasterKey(Key imk, byte[] panpsn)
+    protected Key deriveICCMasterKey(Key imk, byte[] panpsn)
             throws JCEHandlerException {
         byte[] l = Arrays.copyOfRange(panpsn, 0, 8);
         //left part of derived key
@@ -722,7 +738,7 @@ public class JCESecurityModule extends BaseSMAdapter {
         return jceHandler.formDESKey(SMAdapter.LENGTH_DES3_2KEY, mk);
     }
 
-    private String calculatePVV(EncryptedPIN pinUnderLmk, Key key, int keyIdx
+    protected String calculatePVV(EncryptedPIN pinUnderLmk, Key key, int keyIdx
                                ,List<String> excludes) throws SMException {
         String pin = decryptPINImpl(pinUnderLmk);
         if (excludes!=null && excludes.contains(pin))
@@ -926,7 +942,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * <p>
      * Entry point e.g. for simulator systems
      */
-    byte[] calculateARQC(MKDMethod mkdm, SKDMethod skdm
+    protected byte[] calculateARQC(MKDMethod mkdm, SKDMethod skdm
             ,SecureDESKey imkac, String accountNo, String accntSeqNo, byte[] atc
             ,byte[] upn, byte[] transData) throws SMException {
         if (mkdm==null)
@@ -1034,7 +1050,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * <p>
      * Entry point e.g. for simulator systems
      */
-    byte[] calculateARPC(Key skarpc, byte[] arqc, ARPCMethod arpcMethod
+    protected byte[] calculateARPC(Key skarpc, byte[] arqc, ARPCMethod arpcMethod
              ,byte[] arc, byte[] propAuthData) throws SMException {
         if (arpcMethod == null)
             arpcMethod = ARPCMethod.METHOD_1;
@@ -1201,13 +1217,12 @@ public class JCESecurityModule extends BaseSMAdapter {
     }
 
     /**
-     * Generates a random clear key component.<br>
-     * Used by Console, that's why it is package protected.
+     * Generates a random clear key component.
      * @param keyLength
      * @return clear key componenet
      * @throws SMException
      */
-    String generateClearKeyComponent (short keyLength) throws SMException {
+    public String generateClearKeyComponent (short keyLength) throws SMException {
         String clearKeyComponenetHexString;
         SimpleMsg[] cmdParameters =  {
             new SimpleMsg("parameter", "Key Length", keyLength)
@@ -1294,15 +1309,19 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @return forms an SecureDESKey from two clear components
      * @throws SMException
      */
-    SecureDESKey formKEYfromThreeClearComponents (short keyLength, String keyType,
-            String clearComponent1HexString, String clearComponent2HexString, String clearComponent3HexString) throws SMException {
+    public SecureDESKey formKEYfromThreeClearComponents(
+            short keyLength,
+            String keyType,
+            String clearComponent1HexString,
+            String clearComponent2HexString,
+            String clearComponent3HexString) throws SMException {
         SecureDESKey secureDESKey;
         LogEvent evt = new LogEvent(this, "s-m-operation");
-        
+
         try {
             byte[] clearComponent1 = ISOUtil.hex2byte(clearComponent1HexString);
-            byte[] clearComponent2 = ISOUtil.hex2byte(clearComponent2HexString);
-            byte[] clearComponent3 = ISOUtil.hex2byte(clearComponent3HexString);
+            byte[] clearComponent2 = clearComponent2HexString != null ? ISOUtil.hex2byte(clearComponent2HexString) : new byte[keyLength >> 3];
+            byte[] clearComponent3 = clearComponent3HexString != null ? ISOUtil.hex2byte(clearComponent3HexString) : new byte[keyLength >> 3];
             byte[] clearKeyBytes = ISOUtil.xor(ISOUtil.xor(clearComponent1, clearComponent2),
                     clearComponent3);
             Key clearKey = jceHandler.formDESKey(keyLength, clearKeyBytes);
@@ -1325,13 +1344,28 @@ public class JCESecurityModule extends BaseSMAdapter {
         return  secureDESKey;
     }
 
+    @Override
+    public SecureDESKey formKEYfromClearComponents (short keyLength, String keyType, String... components)
+      throws SMException
+    {
+        if (components.length < 1 || components.length > 3)
+            throw new SMException("Invalid number of clear key components");
+        String[] s = new String[3];
+        int i=0;
+        for (String component : components)
+            s[i++] = component;
+
+        return formKEYfromThreeClearComponents(keyLength, keyType, s[0], s[1], s[2]);
+    }
+
+
     /**
      * Calculates a key check value over a clear key
      * @param key
      * @return the key check value
      * @exception SMException
      */
-    byte[] calculateKeyCheckValue (Key key) throws SMException {
+    protected byte[] calculateKeyCheckValue (Key key) throws SMException {
         byte[] encryptedZeroBlock = jceHandler.encryptData(zeroBlock, key);
         return ISOUtil.trim(encryptedZeroBlock, 3);
     }
@@ -1344,7 +1378,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @return secureDESKey
      * @throws SMException
      */
-    private SecureDESKey encryptToLMK (short keyLength, String keyType, Key clearDESKey) throws SMException {
+    protected SecureDESKey encryptToLMK (short keyLength, String keyType, Key clearDESKey) throws SMException {
         Key novar, left, medium, right;
         byte[] clearKeyBytes = jceHandler.extractDESKeyMaterial(keyLength, clearDESKey);
         byte[] bl = new byte[SMAdapter.LENGTH_DES>>3];
@@ -1395,7 +1429,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @return clear key
      * @throws SMException
      */
-    private Key decryptFromLMK (SecureDESKey secureDESKey) throws SMException {
+    protected Key decryptFromLMK (SecureDESKey secureDESKey) throws SMException {
         Key left, medium, right;
         byte[] keyBytes = secureDESKey.getKeyBytes();
         byte[] bl = new byte[SMAdapter.LENGTH_DES>>3];
@@ -1471,7 +1505,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @throws SMException
      *
      */
-    private byte[] calculatePINBlock (String pin, byte pinBlockFormat, String accountNumber) throws SMException {
+    protected byte[] calculatePINBlock (String pin, byte pinBlockFormat, String accountNumber) throws SMException {
         byte[] pinBlock = null;
         String oldPin = null;
         if (pinBlockFormat==SMAdapter.FORMAT42){
@@ -1512,6 +1546,27 @@ public class JCESecurityModule extends BaseSMAdapter {
                     System.arraycopy(pin.toCharArray(), 0
                                     ,block, 0, pin.length());
                     pinBlock = ISOUtil.hex2byte (new String(block));
+                }
+                break;
+            case FORMAT05:
+                {
+                    // Block 1
+                    char[] block1 = formatPINBlock(pin, 0x1);
+
+                    // Block rnd
+                    byte[] rnd = new byte[8];
+                    Random rd = new SecureRandom();
+                    rd.nextBytes(rnd);
+
+                    // Block 2
+                    char[] block2 = ISOUtil.hexString(rnd).toCharArray();
+
+                    // merge blocks
+                    System.arraycopy(block1, 0
+                                    ,block2, 0, pin.length() + 2
+                    );
+                    // pinBlock
+                    pinBlock = ISOUtil.hex2byte(new String(block2));
                 }
                 break;
             case FORMAT34:
@@ -1577,7 +1632,7 @@ public class JCESecurityModule extends BaseSMAdapter {
       // test pin block pdding
       int i = pblock.length - 1;
       while (i >= padidx)
-          if (pblock[i--] != padDigit)
+          if (pblock[i--] != padDigit && padDigit > 0)
               throw new SMException("PIN Block Error - invalid padding");
       // test pin block digits
       while (i >= offset)
@@ -1598,7 +1653,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @return the pin
      * @throws SMException
      */
-    private String calculatePIN (byte[] pinBlock, byte pinBlockFormat, String accountNumber) throws SMException {
+    protected String calculatePIN (byte[] pinBlock, byte pinBlockFormat, String accountNumber) throws SMException {
         String pin = null;
         if (isVSDCPinBlockFormat(pinBlockFormat)) {
           if (accountNumber.length() != 16 )
@@ -1636,6 +1691,21 @@ public class JCESecurityModule extends BaseSMAdapter {
 
                     // test pin block
                     validatePinBlock(block1,checkDigit,padidx,offset);
+                    // get pin
+                    pin = new String(Arrays.copyOfRange(block1, offset, padidx));
+                }
+                break;
+            case FORMAT05:
+                {
+                    // get Block1
+                    byte[] bl1 = pinBlock;
+                    int pinLength = bl1[0] & 0x0f;
+                    char[] block1 = ISOUtil.hexString(bl1).toCharArray();
+                    int offset = 2;
+                    int checkDigit = 0x01;
+                    int padidx = pinLength + offset;
+                    // test pin block
+                    validatePinBlock(block1, checkDigit, padidx, offset, (char) 0);
                     // get pin
                     pin = new String(Arrays.copyOfRange(block1, offset, padidx));
                 }
@@ -1720,9 +1790,11 @@ public class JCESecurityModule extends BaseSMAdapter {
      * @throws SMException
      */
     private void init (String jceProviderClassName, String lmkFile, boolean lmkRebuild) throws SMException {
-        File lmk = new File(lmkFile);
+        File lmk = lmkFile != null ? new File(lmkFile) : null;
+        if (lmk == null && !lmkRebuild)
+            throw new SMException ("null lmkFile - needs rebuild");
         try {
-            keyTypeToLMKIndex = new TreeMap<String,Integer>();
+            keyTypeToLMKIndex = new TreeMap<>();
             keyTypeToLMKIndex.put(SMAdapter.TYPE_ZMK, 0x000);
             keyTypeToLMKIndex.put(SMAdapter.TYPE_ZPK, 0x001);
             keyTypeToLMKIndex.put(SMAdapter.TYPE_PVK, 0x002);
@@ -1744,11 +1816,10 @@ public class JCESecurityModule extends BaseSMAdapter {
             keyTypeToLMKIndex.put(SMAdapter.TYPE_RSA_SK, 0x00C);
             keyTypeToLMKIndex.put(SMAdapter.TYPE_HMAC,   0x10C);
             keyTypeToLMKIndex.put(SMAdapter.TYPE_RSA_PK, 0x00D);
-            Provider provider = null;
+            Provider provider;
             LogEvent evt = new LogEvent(this, "jce-provider");
             try {
-                if (jceProviderClassName == null || jceProviderClassName.compareTo("")
-                        == 0) {
+                if (jceProviderClassName == null || jceProviderClassName.isEmpty()) {
                     evt.addMessage("No JCE Provider specified. Attempting to load default provider (SunJCE).");
                     jceProviderClassName = "com.sun.crypto.provider.SunJCE";
                 }
@@ -1766,30 +1837,37 @@ public class JCESecurityModule extends BaseSMAdapter {
             if (lmkRebuild) {
                 // Creat new LMK file
                 evt = new LogEvent(this, "local-master-keys");
-                evt.addMessage("Rebuilding new Local Master Keys in file: \"" +
-                        lmk.getCanonicalPath() + "\".");
+                if (lmk != null)
+                    evt.addMessage("Rebuilding new Local Master Keys in file: \"" + lmk.getCanonicalPath() + "\".");
                 Logger.log(evt);
                 // Generate New random Local Master Keys
                 generateLMK();
                 // Write the new Local Master Keys to file
-                writeLMK(lmk);
                 evt = new LogEvent(this, "local-master-keys");
-                evt.addMessage("Local Master Keys built successfully in file: \""
-                        + lmk.getCanonicalPath() + "\".");
+                if (lmk != null) {
+                    writeLMK(lmk);
+                    evt.addMessage("Local Master Keys built successfully in file: \""
+                      + lmk.getCanonicalPath() + "\".");
+                } else {
+                    evt.addMessage("Local Master Keys built successfully");
+                }
                 Logger.log(evt);
             }
-            if (!lmk.exists()) {
-                // LMK File does not exist
-                throw  new SMException("Error loading Local Master Keys, file: \""
-                        + lmk.getCanonicalPath() + "\" does not exist." + " Please specify a valid LMK file, or rebuild a new one.");
-            }
-            else {
-                // Read LMK from file
-                readLMK(lmk);
-                evt = new LogEvent(this, "local-master-keys");
-                evt.addMessage("Loaded successfully from file: \"" + lmk.getCanonicalPath()
-                        + "\"");
-                Logger.log(evt);
+            if (lmk != null) {
+                if (!lmk.exists()) {
+                    // LMK File does not exist
+                    throw  new SMException("Error loading Local Master Keys, file: \""
+                      + lmk.getCanonicalPath() + "\" does not exist."
+                      + " Please specify a valid LMK file, or rebuild a new one.");
+                }
+                else {
+                    // Read LMK from file
+                    readLMK(lmk);
+                    evt = new LogEvent(this, "local-master-keys");
+                    evt.addMessage("Loaded successfully from file: \"" + lmk.getCanonicalPath()
+                      + "\"");
+                    Logger.log(evt);
+                }
             }
         } catch (Exception e) {
             if (e instanceof SMException) {
@@ -1871,6 +1949,11 @@ public class JCESecurityModule extends BaseSMAdapter {
             } finally {
                 in.close();
             }
+            Enumeration<?> e = lmkProps.propertyNames();
+            while (e.hasMoreElements()) {
+                String propName = (String) e.nextElement();
+                lmkProps.put(propName, Environment.get(lmkProps.getProperty(propName)));
+            }
             byte[] lmkData;
             for (int i = 0; i <= LMK_PAIRS_NO; i++) {
                 lmkData = ISOUtil.hex2byte(lmkProps.getProperty(
@@ -1926,7 +2009,7 @@ public class JCESecurityModule extends BaseSMAdapter {
     /**
      * The clear Local Master Keys
      */
-    private final Map<Integer,SecretKey> lmks = new TreeMap<Integer,SecretKey>();
+    private final Map<Integer,SecretKey> lmks = new TreeMap<>();
     /**
      * A index for the LMK used to encrypt the PINs
      */
@@ -1955,7 +2038,7 @@ public class JCESecurityModule extends BaseSMAdapter {
      */
     private static final byte[] zeroBlock = ISOUtil.hex2byte("0000000000000000");
 
-    private JCEHandler jceHandler;
+    protected JCEHandler jceHandler;
 
     //--------------------------------------------------------------------------------------------------
     // DUKPT
@@ -1979,7 +2062,7 @@ public class JCESecurityModule extends BaseSMAdapter {
         );
     }
 
-    private byte[] specialEncrypt(byte[] data, byte[] key)
+    protected byte[] specialEncrypt(byte[] data, byte[] key)
             throws JCEHandlerException
     {
         if (key.length == 8)
@@ -1998,7 +2081,7 @@ public class JCESecurityModule extends BaseSMAdapter {
         return data;
     }
 
-    private byte[] specialDecrypt(byte[] data, byte[] key)
+    protected byte[] specialDecrypt(byte[] data, byte[] key)
             throws JCEHandlerException
     {
         if (key.length == 8)
@@ -2120,7 +2203,59 @@ public class JCESecurityModule extends BaseSMAdapter {
         return data;
     }
 
-    private byte[] calculateDerivedKey(KeySerialNumber ksn, SecureDESKey bdk, boolean tdes, boolean dataEncryption)
+
+    @Override
+    public byte[] dataEncrypt (SecureDESKey bdk, byte[] clearText) throws SMException {
+        try {
+            byte[] ksnB = jceHandler.generateDESKey ((short) 128).getEncoded();
+            KeySerialNumber ksn = getKSN (ISOUtil.hexString(ksnB));
+            byte[] derivedKey = calculateDerivedKey (ksn, bdk, true, true);
+            Key dk = jceHandler.formDESKey ((short) 128, derivedKey);
+            byte[] cypherText = jceHandler.encryptData (lpack(clearText), dk);
+
+            ByteBuffer bb = ByteBuffer.allocate (cypherText.length + 32);
+            bb.put (ksnB);
+            bb.put (cypherText);
+            bb.put (hash8 (new byte[][]{ ksnB, cypherText, derivedKey }));
+            return bb.array();
+        } catch (JCEHandlerException e) {
+            throw new SMException (e);
+        }
+    }
+
+    @Override
+    public byte[] dataDecrypt (SecureDESKey bdk, byte[] cypherText) throws SMException {
+        try {
+            if (cypherText.length < 32) {
+                throw new SMException (
+                  "Invalid key block '" + ISOUtil.hexString (cypherText) + "'"
+                );
+            }
+            byte[] ksnB          = new byte[24];
+            byte[] encryptedData = new byte[cypherText.length - 32];
+            byte[] mac           = new byte[8];
+
+            System.arraycopy (cypherText,  0, ksnB, 0, 24);
+            System.arraycopy (cypherText, 24, encryptedData, 0, encryptedData.length);
+            System.arraycopy (cypherText, cypherText.length-8, mac, 0, 8);
+
+            KeySerialNumber ksn = getKSN (ISOUtil.hexString(ksnB));
+
+            byte[] derivedKey = calculateDerivedKey (ksn, bdk, true, true);
+            Key dk = jceHandler.formDESKey ((short) 128, derivedKey);
+            byte[] clearText = jceHandler.decryptData (encryptedData, dk);
+            byte[] generatedMac = hash8 (
+              new byte[][] { ksnB, encryptedData, derivedKey }
+            );
+            if (!Arrays.equals (mac, generatedMac))
+                throw new SMException ("Invalid cyphertext.");
+            return lunpack (clearText);
+        } catch (JCEHandlerException e) {
+            throw new SMException (e);
+        }
+   }
+
+    protected byte[] calculateDerivedKey(KeySerialNumber ksn, SecureDESKey bdk, boolean tdes, boolean dataEncryption)
             throws SMException
     {
         return tdes?calculateDerivedKeyTDES(ksn,bdk, dataEncryption):calculateDerivedKeySDES(ksn,bdk);
@@ -2174,9 +2309,9 @@ public class JCESecurityModule extends BaseSMAdapter {
 
         byte[] curkey = calculateInitialKey(ksn, bdk, true);
 
-        byte[] smidr = ISOUtil.hex2byte(
-                ksn.getBaseKeyID() + ksn.getDeviceID() + ksn.getTransactionCounter()
-        );
+        String sn = ksn.getBaseKeyID() + ksn.getDeviceID() + ksn.getTransactionCounter();
+        if (sn.length() > 16) sn = sn.substring(sn.length()-16);
+        byte[] smidr = ISOUtil.hex2byte(sn);
         byte[] reg3 = ISOUtil.hex2byte(ksn.getTransactionCounter());
         reg3 = and(reg3, _1FFFFF);
         byte[] shiftr = _100000;
@@ -2252,7 +2387,7 @@ public class JCESecurityModule extends BaseSMAdapter {
         return new KeySerialNumber(
                 s.substring(0, 6),
                 s.substring(6, 10),
-                s.substring(10)
+                s.substring(10, Math.min(s.length(), 20))
         );
     }
 
@@ -2331,4 +2466,42 @@ public class JCESecurityModule extends BaseSMAdapter {
                                 accountNumber, false);
     }
 
+    /**
+     * places a length indicator in a byte array.
+     * @param b the byte array
+     * @return a byte array with a two-byte length indicator
+     */
+    private byte[] lpack (byte[] b) {
+        int l = b.length;
+        int adjustedLen = ((l+9) >> 3) << 3;
+        byte[] d = new byte[adjustedLen];
+        System.arraycopy (b, 0, d, 2, l);
+        d[0] = (byte) ((l >> 8) & 0xFF);
+        d[1] = (byte) (l & 0xFF);
+        return d;
+    }
+    /**
+     * Unpacks a byte array packed by lPack
+     * into the former byte[]
+     * @param b packed byte array
+     * @return original (unpacked) byte array
+     */
+    private byte[] lunpack (byte[] b) {
+        int l = ((((int)b[0])&0xFF) << 8) | (((int)b[1])&0xFF);
+        byte[] d = new byte[l];
+        System.arraycopy (b,2,d,0,l);
+        return d;
+    }
+
+    private byte[] hash8 (byte[][] bb) throws SMException {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA");
+            for (byte[] b : bb) {
+                md.update(b);
+            }
+            return Arrays.copyOf(md.digest(), 8);
+        } catch (NoSuchAlgorithmException e) {
+            throw new SMException (e);
+        }
+    }
 }

@@ -46,7 +46,7 @@ A QMUX configuration looks like this:
     has to match that name. If a +<ready>+ element isn't present, 
     +MUX.isConnected()+ will always return true.
 
-image:images/qmux.png[width="75%",alt="QMUX",align="center"] 
+image:images/qmux.png[width="400px",alt="QMUX",align="center"] 
 
 QMUX is registered in the NameRegistrar under the name provided in the qbean
 configuration file using the +"mux."+ prefix, ("mux.mymux" in our example) 
@@ -110,6 +110,7 @@ the QMUX configuration, i.e.:
 ------------
 <mux class="org.jpos.q2.iso.QMUX" logger="Q2" name="mymux">
  <key>42 41 11</key>                                             <1>
+ <key mti="0800">41</key>                                        <2>
  <in>your-channel-receive</in>
  <out>your-channel-send</out>
  <ready>your-channel.ready</ready>
@@ -117,6 +118,7 @@ the QMUX configuration, i.e.:
 </mux>
 ------------
 <1> overrides default key.
+<2> overrides default key for 0800 messages.
 
 In addition to the fields defined in the +'<key>'+ element, QMUX maps each
 digit of the MTI to use as a key part in order to avoid mixing for instance

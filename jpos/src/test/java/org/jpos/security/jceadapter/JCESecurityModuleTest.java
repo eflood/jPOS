@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,10 +18,13 @@
 
 package org.jpos.security.jceadapter;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+import static org.apache.commons.lang3.JavaVersion.JAVA_13;
+import static org.apache.commons.lang3.JavaVersion.JAVA_14;
+import static org.apache.commons.lang3.SystemUtils.isJavaVersionAtMost;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -30,7 +33,6 @@ import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
 import org.jpos.core.SimpleConfiguration;
 import org.jpos.core.SubConfiguration;
-import org.jpos.iso.ISODate;
 import org.jpos.iso.ISOUtil;
 import org.jpos.security.ARPCMethod;
 import org.jpos.security.CipherMode;
@@ -43,9 +45,8 @@ import org.jpos.security.SMAdapter;
 import org.jpos.security.SMException;
 import org.jpos.security.SecureDESKey;
 import org.jpos.util.Logger;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class JCESecurityModuleTest {
 
@@ -194,7 +195,7 @@ public class JCESecurityModuleTest {
 
     private static EMVTxnData etd;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpClass() throws Exception {
       jcesecmod = new JCESecurityModule(PREFIX+"secret.lmk");
       pinUnderLMK = jcesecmod.encryptPIN("1234", "1234567890123");
@@ -274,15 +275,19 @@ public class JCESecurityModuleTest {
             jCESecurityModule.calculateKeyCheckValue(new SecretKeySpec("testString".getBytes(), "testJCESecurityModuleParam2"));
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.jceadapter.JCEHandler.encryptData(byte[], java.security.Key)\" because \"this.jceHandler\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
     @Test
     public void testConstructor() throws Throwable {
         JCESecurityModule jCESecurityModule = new JCESecurityModule();
-        assertNull("jCESecurityModule.getRealm()", jCESecurityModule.getRealm());
-        assertNull("jCESecurityModule.getLogger()", jCESecurityModule.getLogger());
+        assertNull(jCESecurityModule.getRealm(), "jCESecurityModule.getRealm()");
+        assertNull(jCESecurityModule.getLogger(), "jCESecurityModule.getLogger()");
     }
 
     @Test
@@ -291,7 +296,7 @@ public class JCESecurityModuleTest {
             new JCESecurityModule(new SimpleConfiguration(), Logger.getLogger("."), "testJCESecurityModuleRealm");
             fail("Expected ConfigurationException to be thrown");
         } catch (ConfigurationException ex) {
-            assertTrue("Test completed without Exception", true);
+            assertTrue(true, "Test completed without Exception");
             // dependencies on static and environment state led to removal of 4
             // assertions
         }
@@ -314,7 +319,7 @@ public class JCESecurityModuleTest {
             new JCESecurityModule(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            assertNull(ex.getMessage(), "ex.getMessage()");
         }
     }
 
@@ -324,7 +329,7 @@ public class JCESecurityModuleTest {
             new JCESecurityModule(null, "testJCESecurityModuleJceProviderClassName");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            assertNull(ex.getMessage(), "ex.getMessage()");
         }
     }
 
@@ -335,7 +340,11 @@ public class JCESecurityModuleTest {
             new JCESecurityModule(cfg, new Logger(), "testJCESecurityModuleRealm");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.core.Configuration.get(String)\" because \"this.cfg\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -375,7 +384,11 @@ public class JCESecurityModuleTest {
             new JCESecurityModule().decryptPINImpl(null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.EncryptedPIN.getPINBlock()\" because \"pinUnderLmk\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -395,7 +408,11 @@ public class JCESecurityModuleTest {
             new JCESecurityModule().encryptPINImpl(null, "testJCESecurityModuleAccountNumber");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"String.length()\" because \"pin\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -405,8 +422,8 @@ public class JCESecurityModuleTest {
             new JCESecurityModule().encryptPINImpl("11Character", "12Characters");
             fail("Expected SMException to be thrown");
         } catch (SMException ex) {
-            assertEquals("ex.getMessage()", "Invalid PIN decimal digits: 11Character", ex.getMessage());
-            assertNull("ex.getNested()", ex.getNested());
+            assertEquals("Invalid PIN decimal digits: 11Character", ex.getMessage(), "ex.getMessage()");
+            assertNull(ex.getNested(), "ex.getNested()");
         }
     }
 
@@ -417,10 +434,9 @@ public class JCESecurityModuleTest {
             fail("Expected SMException to be thrown");
         } catch (SMException ex) {
             assertEquals(
-                    "ex.getMessage()",
                     "Invalid Account Number: 11Character. The length of the account number must be 12 (the 12 right-most digits of the account number excluding the check digit)",
-                    ex.getMessage());
-            assertNull("ex.getNested()", ex.getNested());
+                    ex.getMessage(), "ex.getMessage()");
+            assertNull(ex.getNested(), "ex.getNested()");
         }
     }
 
@@ -431,10 +447,9 @@ public class JCESecurityModuleTest {
             fail("Expected SMException to be thrown");
         } catch (SMException ex) {
             assertEquals(
-                    "ex.getMessage()",
                     "Invalid Account Number: 13CharactersX. The length of the account number must be 12 (the 12 right-most digits of the account number excluding the check digit)",
-                    ex.getMessage());
-            assertNull("ex.getNested()", ex.getNested());
+                    ex.getMessage(), "ex.getMessage()");
+            assertNull(ex.getNested(), "ex.getNested()");
         }
     }
 
@@ -444,8 +459,8 @@ public class JCESecurityModuleTest {
             jcesecmod.encryptPINImpl("1234567890123", "12Characters");
             fail("Expected SMException to be thrown");
         } catch (SMException ex) {
-            assertEquals("ex.getMessage()", "Invalid PIN length: 13", ex.getMessage());
-            assertNull("ex.getNested()", ex.getNested());
+            assertEquals("Invalid PIN length: 13", ex.getMessage(), "ex.getMessage()");
+            assertNull(ex.getNested(), "ex.getNested()");
         }
     }
 
@@ -455,8 +470,8 @@ public class JCESecurityModuleTest {
             jcesecmod.encryptPINImpl("1234567890123", "testJCESecurityModuleAccountNumber");
             fail("Expected SMException to be thrown");
         } catch (SMException ex) {
-            assertEquals("ex.getMessage()", "Invalid PIN length: 13", ex.getMessage());
-            assertNull("ex.getNested()", ex.getNested());
+            assertEquals("Invalid PIN length: 13", ex.getMessage(), "ex.getMessage()");
+            assertNull(ex.getNested(), "ex.getNested()");
         }
     }
 
@@ -475,7 +490,11 @@ public class JCESecurityModuleTest {
                     "testJCESecurityModuleKeyHexString1", "testJCESecurityModuleKeyCheckValueHexString1"));
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.SecureDESKey.getKeyBytes()\" because \"secureDESKey\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -486,7 +505,11 @@ public class JCESecurityModuleTest {
                     "testJCESecurityModuleKeyHexString1", "testJCESecurityModuleKeyCheckValueHexString1"), new SecureDESKey());
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"java.util.Map.containsKey(Object)\" because \"this.keyTypeToLMKIndex\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -496,7 +519,11 @@ public class JCESecurityModuleTest {
             new JCESecurityModule().exportPINImpl(null, new SecureDESKey(), (byte) 0);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.EncryptedPIN.getAccountNumber()\" because \"pinUnderLmk\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -511,12 +538,27 @@ public class JCESecurityModuleTest {
     }
 
     @Test
+    public void testExportPINImplFormat05() throws Throwable {
+        EncryptedPIN ep = jcesecmod.encryptPINImpl("1234", "123456789012");
+        EncryptedPIN pinUnderZPKfmt05 = jcesecmod.exportPINImpl(ep, zpk, SMAdapter.FORMAT05);
+        assertEquals(SMAdapter.FORMAT05, pinUnderZPKfmt05.getPINBlockFormat());
+        assertEquals("123456789012", pinUnderZPKfmt05.getAccountNumber());
+        EncryptedPIN ep2 = jcesecmod.importPINImpl(pinUnderZPKfmt05, zpk);
+        String pin = jcesecmod.decryptPINImpl(ep2);
+        assertEquals("1234", pin);
+    }
+
+    @Test
     public void testGenerateKeyImplThrowsNullPointerException() throws Throwable {
         try {
             new JCESecurityModule().generateKeyImpl((short) 100, "testJCESecurityModuleKeyType");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.jceadapter.JCEHandler.generateDESKey(short)\" because \"this.jceHandler\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -529,7 +571,11 @@ public class JCESecurityModuleTest {
                     "testJCESecurityModuleKeyCheckValueHexString1"), true);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"java.util.Map.containsKey(Object)\" because \"this.keyTypeToLMKIndex\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -539,7 +585,11 @@ public class JCESecurityModuleTest {
             new JCESecurityModule().importKeyImpl((short) 100, "testJCESecurityModuleKeyType", ">".getBytes(), null, true);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.SecureDESKey.getKeyBytes()\" because \"secureDESKey\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -550,7 +600,11 @@ public class JCESecurityModuleTest {
                     "testJCESecurityModuleAccountNumber"), null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.SecureDESKey.getKeyBytes()\" because \"secureDESKey\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -563,7 +617,11 @@ public class JCESecurityModuleTest {
                     "testString".getBytes()));
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"java.util.Map.containsKey(Object)\" because \"this.keyTypeToLMKIndex\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -573,7 +631,11 @@ public class JCESecurityModuleTest {
             new JCESecurityModule().importPINImpl(null, new SecureDESKey());
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.EncryptedPIN.getAccountNumber()\" because \"pinUnderKd1\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -581,6 +643,22 @@ public class JCESecurityModuleTest {
     public void testImportPINImpl() throws Throwable {
         EncryptedPIN pinUnderKd1 = new EncryptedPIN("3C0CA40863092C3A", SMAdapter.FORMAT01,"1234567890120");
         EncryptedPIN ep = jcesecmod.importPINImpl(pinUnderKd1, zpk);
+        String pin = jcesecmod.decryptPINImpl(ep);
+        assertEquals("1234", pin);
+    }
+
+    @Test
+    public void testImportPINImplFormat05() throws Throwable {
+        EncryptedPIN pinUnderZPKfmt05 = new EncryptedPIN("07438C40F225BF7D", SMAdapter.FORMAT05, "1234567890120");
+        EncryptedPIN ep = jcesecmod.importPINImpl(pinUnderZPKfmt05, zpk);
+        String pin = jcesecmod.decryptPINImpl(ep);
+        assertEquals("1234", pin);
+    }
+
+    @Test
+    public void testImportPINImplFormat05Other() throws Throwable {
+        EncryptedPIN pinUnderZPKfmt05 = new EncryptedPIN("07438C40F225BF7D", SMAdapter.FORMAT05, "0210987654321");
+        EncryptedPIN ep = jcesecmod.importPINImpl(pinUnderZPKfmt05, zpk);
         String pin = jcesecmod.decryptPINImpl(ep);
         assertEquals("1234", pin);
     }
@@ -605,7 +683,7 @@ public class JCESecurityModuleTest {
             jCESecurityModule.setConfiguration(new SimpleConfiguration());
             fail("Expected ConfigurationException to be thrown");
         } catch (ConfigurationException ex) {
-            assertTrue("Test completed without Exception", true);
+            assertTrue(true, "Test completed without Exception");
             // dependencies on static and environment state led to removal of 8
             // assertions
         }
@@ -619,7 +697,11 @@ public class JCESecurityModuleTest {
             jCESecurityModule.setConfiguration(cfg);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.core.Configuration.get(String)\" because \"this.cfg\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -630,7 +712,11 @@ public class JCESecurityModuleTest {
                     "testJCESecurityModuleAccountNumber"), null, new SecureDESKey(), (byte) 0);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.security.SecureDESKey.getKeyBytes()\" because \"secureDESKey\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -642,7 +728,11 @@ public class JCESecurityModuleTest {
                     "testJCESecurityModuleKeyType", keyBytes, "testString".getBytes()), new SecureDESKey(), (byte) 0);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"java.util.Map.containsKey(Object)\" because \"this.keyTypeToLMKIndex\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -654,7 +744,11 @@ public class JCESecurityModuleTest {
                     "testString".getBytes()), new SecureDESKey(), (byte) 0);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"java.util.Map.containsKey(Object)\" because \"this.keyTypeToLMKIndex\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -670,42 +764,42 @@ public class JCESecurityModuleTest {
     }
 
     @Test
-    public void testCalculateCVVImpl1() throws Throwable {
+    public void testCalculateCVDImpl1() throws Throwable {
         String accountNo = "123456789012";
-        Date expDate = ISODate.parseISODate("1108"+"01000000");
+        String expDate = "1108";
         String serviceCode = "000";
         String expected = "204";
-        String cvv = jcesecmod.calculateCVV(accountNo, cvk, null, expDate, serviceCode);
+        String cvv = jcesecmod.calculateCVD(accountNo, cvk, null, expDate, serviceCode);
         assertEquals(expected, cvv);
     }
 
     @Test
-    public void testVerifyCVVImpl1() throws Throwable {
+    public void testVerifyCVDImpl1() throws Throwable {
         String accountNo = "123456789012";
-        Date expDate = ISODate.parseISODate("1108"+"01000000");
+        String expDate = "1108";
         String serviceCode = "000";
         String cvv = "204";
-        boolean result = jcesecmod.verifyCVV(accountNo, cvk, null, cvv, expDate, serviceCode);
+        boolean result = jcesecmod.verifyCVD(accountNo, cvk, null, cvv, expDate, serviceCode);
         assertTrue(result);
     }
 
     @Test
-    public void testCalculateCVVImpl2() throws Throwable {
+    public void testCalculateCVDImpl2() throws Throwable {
         String accountNo = "123456789012";
-        Date expDate = ISODate.parseISODate("1108"+"01000000");
+        String expDate = "1108";
         String serviceCode = "000";
         String expected = "453";
-        String cvv = jcesecmod.calculateCVV(accountNo, cvkA, cvkB, expDate, serviceCode);
+        String cvv = jcesecmod.calculateCVD(accountNo, cvkA, cvkB, expDate, serviceCode);
         assertEquals(expected, cvv);
     }
 
     @Test
-    public void testVerifyCVVImpl2() throws Throwable {
+    public void testVerifyCVDImpl2() throws Throwable {
         String accountNo = "123456789012";
-        Date expDate = ISODate.parseISODate("1108"+"01000000");
+        String expDate = "1108";
         String serviceCode = "000";
         String cvv = "453";
-        boolean result = jcesecmod.verifyCVV(accountNo, cvkA, cvkB, cvv, expDate, serviceCode);
+        boolean result = jcesecmod.verifyCVD(accountNo, cvkA, cvkB, cvv, expDate, serviceCode);
         assertTrue(result);
     }
 
@@ -754,16 +848,20 @@ public class JCESecurityModuleTest {
         assertTrue(result);
     }
 
-    @Test( expected = SMException.class)
+    @Test
     public void testCalculateCAVVImplSMException() throws Throwable {
-        String accountNo = "123456789012";
-        String cavv = jcesecmod.calculateCAVV(accountNo, cvk, null, null, null);
+        assertThrows(SMException.class, () -> {
+            String accountNo = "123456789012";
+            String cavv = jcesecmod.calculateCAVV(accountNo, cvk, null, null, null);
+        });
     }
 
-    @Test( expected = SMException.class)
+    @Test
     public void testVerifyCAVVImplSMException() throws Throwable {
-        String accountNo = "123456789012";
-        boolean result = jcesecmod.verifyCAVV(accountNo, cvk, null, null, null, null);
+        assertThrows(SMException.class, () -> {
+            String accountNo = "123456789012";
+            boolean result = jcesecmod.verifyCAVV(accountNo, cvk, null, null, null, null);
+        });
     }
 
     @Test
@@ -803,7 +901,7 @@ public class JCESecurityModuleTest {
     @Test
     public void testVerifyDCVVImpl1() throws Throwable {
         String accountNo = "1234567890123456";
-        Date expDate = ISODate.parseISODate("1310"+"01000000");
+        String expDate = "1310";
         String serviceCode = "226";
         String dcvv = "422";
         byte[] atc = ISOUtil.hex2byte("3210");
@@ -815,7 +913,7 @@ public class JCESecurityModuleTest {
     @Test
     public void testVerifyDCVVImpl2() throws Throwable {
         String accountNo = "123456789012";
-        Date expDate = ISODate.parseISODate("1310"+"01000000");
+        String expDate = "1310";
         String serviceCode = "226";
         String dcvv = "719";
         byte[] atc = ISOUtil.hex2byte("3210");
@@ -827,7 +925,7 @@ public class JCESecurityModuleTest {
     @Test
     public void testVerifyDCVVImpl3() throws Throwable {
         String accountNo = "123456789012";
-        Date expDate = ISODate.parseISODate("1310"+"01000000");
+        String expDate = "1310";
         String serviceCode = "226";
         String dcvv = "824";
         byte[] atc = ISOUtil.hex2byte("3210");
@@ -839,7 +937,7 @@ public class JCESecurityModuleTest {
     @Test
     public void testVerifyDCVVImpl4() throws Throwable {
         String accountNo = "1234567890123456789";
-        Date expDate = ISODate.parseISODate("1310"+"01000000");
+        String expDate = "1310";
         String serviceCode = "226";
         String dcvv = "562";
         byte[] atc = ISOUtil.hex2byte("3210");
@@ -851,7 +949,7 @@ public class JCESecurityModuleTest {
     @Test
     public void testVerifyDCVVImplException1() throws Throwable {
         String accountNo = "";
-        Date expDate = ISODate.parseISODate("1310"+"01000000");
+        String expDate = "1310";
         String serviceCode = "226";
         String dcvv = "562";
         byte[] atc = ISOUtil.hex2byte("3210");
@@ -860,14 +958,18 @@ public class JCESecurityModuleTest {
                         ,serviceCode, atc, MKDMethod.OPTION_A);
             fail("Expected SMException to be thrown");
         } catch (SMException ex){
-            assertEquals("ex.getMessage()", "String index out of range: -4", ex.getNested().getMessage());
+            if (isJavaVersionAtMost(JAVA_13)) {
+                assertEquals("String index out of range: -4", ex.getNested().getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("begin 4, end 0, length 0", ex.getNested().getMessage(), "ex.getMessage()");
+            }
         }
     }
 
     @Test
     public void testVerifyDCVVImplException2() throws Throwable {
         String accountNo = null;
-        Date expDate = ISODate.parseISODate("1310"+"01000000");
+        String expDate = "1310";
         String serviceCode = "226";
         String dcvv = "562";
         byte[] atc = ISOUtil.hex2byte("3210");
@@ -876,7 +978,11 @@ public class JCESecurityModuleTest {
                         ,serviceCode, atc, MKDMethod.OPTION_A);
             fail("Expected SMException to be thrown");
         } catch (SMException ex){
-            assertNull("ex.getMessage()", ex.getNested().getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getNested().getMessage(), "ex.getNested().getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"String.length()\" because \"pan\" is null", ex.getNested().getMessage(), "ex.getNested().getMessage()");
+            }
         }
     }
 
@@ -971,7 +1077,11 @@ public class JCESecurityModuleTest {
             ,upn, data, MKDMethod.OPTION_A, cvc3);
             fail("Expected SMException to be thrown");
         } catch (SMException ex){
-            assertNull("ex.getMessage()", ex.getNested().getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getNested().getMessage(), "ex.getNested().getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"String.length()\" because \"pan\" is null", ex.getNested().getMessage(), "ex.getNested().getMessage()");
+            }
         }
     }
 
@@ -987,16 +1097,18 @@ public class JCESecurityModuleTest {
         assertArrayEquals(arpc, result);
     }
 
-    @Test (expected = SMException.class)
+    @Test
     public void testGenerateARPCImpl_VSDC_M2() throws Throwable {
-        byte[] arqc   = ISOUtil.hex2byte("26C8A1042D1CAF3E");
-        byte[] csu    = ISOUtil.hex2byte("00120000");
-        byte[] arpc   = ISOUtil.hex2byte("701E5370");
-        byte[] result = jcesecmod.generateARPC(MKDMethod.OPTION_A, SKDMethod.VSDC
-                        ,imkac, accountNoA, accountNoA_CSN, arqc
-                        ,etd.getATC(), null
-                        ,ARPCMethod.METHOD_2, csu, null);
-        assertArrayEquals(arpc, result);
+        assertThrows(SMException.class, () -> {
+            byte[] arqc   = ISOUtil.hex2byte("26C8A1042D1CAF3E");
+            byte[] csu    = ISOUtil.hex2byte("00120000");
+            byte[] arpc   = ISOUtil.hex2byte("701E5370");
+            byte[] result = jcesecmod.generateARPC(MKDMethod.OPTION_A, SKDMethod.VSDC
+                            ,imkac, accountNoA, accountNoA_CSN, arqc
+                            ,etd.getATC(), null
+                            ,ARPCMethod.METHOD_2, csu, null);
+            assertArrayEquals(arpc, result);
+        });
     }
 
     @Test
@@ -1011,16 +1123,18 @@ public class JCESecurityModuleTest {
         assertArrayEquals(arpc, result);
     }
 
-    @Test (expected = SMException.class)
+    @Test
     public void testGenerateARPCImpl_MCHIP_M2() throws Throwable {
-        byte[] arqc   = ISOUtil.hex2byte("AC8074C9E62EE6EF");
-        byte[] csu    = ISOUtil.hex2byte("00120000");
-        byte[] arpc   = ISOUtil.hex2byte("C5868248");
-        byte[] result = jcesecmod.generateARPC(MKDMethod.OPTION_A, SKDMethod.MCHIP
-                        ,imkac, accountNoA, accountNoA_CSN, arqc
-                        ,etd.getATC(), etd.getUPN()
-                        ,ARPCMethod.METHOD_2, csu, null);
-        assertArrayEquals(arpc, result);
+        assertThrows(SMException.class, () -> {
+            byte[] arqc   = ISOUtil.hex2byte("AC8074C9E62EE6EF");
+            byte[] csu    = ISOUtil.hex2byte("00120000");
+            byte[] arpc   = ISOUtil.hex2byte("C5868248");
+            byte[] result = jcesecmod.generateARPC(MKDMethod.OPTION_A, SKDMethod.MCHIP
+                            ,imkac, accountNoA, accountNoA_CSN, arqc
+                            ,etd.getATC(), etd.getUPN()
+                            ,ARPCMethod.METHOD_2, csu, null);
+            assertArrayEquals(arpc, result);
+        });
     }
 
     @Test
@@ -1131,28 +1245,32 @@ public class JCESecurityModuleTest {
         assertArrayEquals(arpc, result);
     }
 
-    @Test (expected = SMException.class)
+    @Test
     public void testVerifyARQCGenerateARPCImpl_VSDC_P00_M2() throws Throwable {
-        byte[] arqc   = ISOUtil.hex2byte("26C8A1042D1CAF3E");
-        byte[] csu    = ISOUtil.hex2byte("00120000");
-        byte[] arpc   = ISOUtil.hex2byte("701E5370");
-        byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.VSDC
-                        ,imkac, accountNoA, accountNoA_CSN, arqc
-                        ,etd.getATC(), null, etd.getDataNoPad()
-                        ,ARPCMethod.METHOD_2, csu, null);
-        assertArrayEquals(arpc, result);
+        assertThrows(SMException.class, () -> {
+            byte[] arqc   = ISOUtil.hex2byte("26C8A1042D1CAF3E");
+            byte[] csu    = ISOUtil.hex2byte("00120000");
+            byte[] arpc   = ISOUtil.hex2byte("701E5370");
+            byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.VSDC
+                            ,imkac, accountNoA, accountNoA_CSN, arqc
+                            ,etd.getATC(), null, etd.getDataNoPad()
+                            ,ARPCMethod.METHOD_2, csu, null);
+            assertArrayEquals(arpc, result);
+        });
     }
 
-    @Test (expected = SMException.class)
+    @Test
     public void testVerifyARQCGenerateARPCImpl_VSDC_P80_M2() throws Throwable {
-        byte[] arqc   = ISOUtil.hex2byte("2263CD868F3E0234");
-        byte[] csu    = ISOUtil.hex2byte("00120000");
-        byte[] arpc   = ISOUtil.hex2byte("4A344A05");
-        byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.VSDC
-                        ,imkac, accountNoA, accountNoA_CSN, arqc
-                        ,etd.getATC(), null, etd.getDataPad80()
-                        ,ARPCMethod.METHOD_2, csu, null);
-        assertArrayEquals(arpc, result);
+        assertThrows(SMException.class, () -> {
+            byte[] arqc   = ISOUtil.hex2byte("2263CD868F3E0234");
+            byte[] csu    = ISOUtil.hex2byte("00120000");
+            byte[] arpc   = ISOUtil.hex2byte("4A344A05");
+            byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.VSDC
+                            ,imkac, accountNoA, accountNoA_CSN, arqc
+                            ,etd.getATC(), null, etd.getDataPad80()
+                            ,ARPCMethod.METHOD_2, csu, null);
+            assertArrayEquals(arpc, result);
+        });
     }
 
     @Test //OK
@@ -1179,28 +1297,32 @@ public class JCESecurityModuleTest {
         assertArrayEquals(arpc, result);
     }
 
-    @Test (expected = SMException.class)
+    @Test
     public void testVerifyARQCGenerateARPCImpl_MCHIP_P00_M2() throws Throwable {
-        byte[] arqc   = ISOUtil.hex2byte("9FFD1D52AE0EC0F3");
-        byte[] csu    = ISOUtil.hex2byte("00120000");
-        byte[] arpc   = ISOUtil.hex2byte("24E13D5D");
-        byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.MCHIP
-                        ,imkac, accountNoA, accountNoA_CSN, arqc
-                        ,etd.getATC(), etd.getUPN(), etd.getDataNoPad()
-                        ,ARPCMethod.METHOD_2, csu, null);
-        assertArrayEquals(arpc, result);
+        assertThrows(SMException.class, () -> {
+            byte[] arqc   = ISOUtil.hex2byte("9FFD1D52AE0EC0F3");
+            byte[] csu    = ISOUtil.hex2byte("00120000");
+            byte[] arpc   = ISOUtil.hex2byte("24E13D5D");
+            byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.MCHIP
+                            ,imkac, accountNoA, accountNoA_CSN, arqc
+                            ,etd.getATC(), etd.getUPN(), etd.getDataNoPad()
+                            ,ARPCMethod.METHOD_2, csu, null);
+            assertArrayEquals(arpc, result);
+        });
     }
 
-    @Test (expected = SMException.class)
+    @Test
     public void testVerifyARQCGenerateARPCImpl_MCHIP_P80_M2() throws Throwable {
-        byte[] arqc   = ISOUtil.hex2byte("AC8074C9E62EE6EF");
-        byte[] csu    = ISOUtil.hex2byte("00120000");
-        byte[] arpc   = ISOUtil.hex2byte("C5868248");
-        byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.MCHIP
-                        ,imkac, accountNoA, accountNoA_CSN, arqc
-                        ,etd.getATC(), etd.getUPN(), etd.getDataPad80()
-                        ,ARPCMethod.METHOD_2, csu, null);
-        assertArrayEquals(arpc, result);
+        assertThrows(SMException.class, () -> {
+            byte[] arqc   = ISOUtil.hex2byte("AC8074C9E62EE6EF");
+            byte[] csu    = ISOUtil.hex2byte("00120000");
+            byte[] arpc   = ISOUtil.hex2byte("C5868248");
+            byte[] result = jcesecmod.verifyARQCGenerateARPC(MKDMethod.OPTION_A, SKDMethod.MCHIP
+                            ,imkac, accountNoA, accountNoA_CSN, arqc
+                            ,etd.getATC(), etd.getUPN(), etd.getDataPad80()
+                            ,ARPCMethod.METHOD_2, csu, null);
+            assertArrayEquals(arpc, result);
+        });
     }
 
     @Test //OK
@@ -1639,19 +1761,25 @@ public class JCESecurityModuleTest {
         assertArrayEquals(testData01, iv);
     }
 
-    @Test( expected = SMException.class)
+    @Test
     public void translateKeySchemeImpl_NULS() throws Throwable {
-        jcesecmod.translateKeySchemeImpl(null, null);
+        assertThrows(SMException.class, () -> {
+            jcesecmod.translateKeySchemeImpl(null, null);
+        });
     }
 
-    @Test( expected = SMException.class)
+    @Test
     public void translateKeySchemeImpl_NullKey() throws Throwable {
-        jcesecmod.translateKeySchemeImpl(null, KeyScheme.U);
+        assertThrows(SMException.class, () -> {
+            jcesecmod.translateKeySchemeImpl(null, KeyScheme.U);
+        });
     }
 
-    @Test( expected = SMException.class)
+    @Test
     public void translateKeySchemeImpl_NullKeyScheme() throws Throwable {
-        jcesecmod.translateKeySchemeImpl(zpk, null);
+        assertThrows(SMException.class, () -> {
+            jcesecmod.translateKeySchemeImpl(zpk, null);
+        });
     }
 
     @Test
@@ -1659,9 +1787,9 @@ public class JCESecurityModuleTest {
         SecureDESKey conv = jcesecmod.translateKeySchemeImpl(zpk, KeyScheme.U);
         assertEquals(zpk.getKeyLength(), conv.getKeyLength());
         assertEquals(zpk.getKeyType(), conv.getKeyType());
-        Assert.assertArrayEquals(zpk.getKeyCheckValue(), conv.getKeyCheckValue());
-        Assert.assertEquals(KeyScheme.U, zpk.getScheme());
-        Assert.assertEquals(zpk.getVariant(), zpk.getVariant());
+        assertArrayEquals(zpk.getKeyCheckValue(), conv.getKeyCheckValue());
+        assertEquals(KeyScheme.U, zpk.getScheme());
+        assertEquals(zpk.getVariant(), zpk.getVariant());
     }
 
     @Test
@@ -1672,11 +1800,37 @@ public class JCESecurityModuleTest {
         SecureDESKey conv = jcesecmod.translateKeySchemeImpl(pvk, KeyScheme.U);
         assertEquals(pvk.getKeyLength(), conv.getKeyLength());
         assertEquals(SMAdapter.TYPE_PVK+":0U", conv.getKeyType());
-        Assert.assertArrayEquals(pvk.getKeyCheckValue(), conv.getKeyCheckValue());
-        Assert.assertEquals(KeyScheme.U, conv.getScheme());
-        Assert.assertEquals(pvk.getVariant(), conv.getVariant());
+        assertArrayEquals(pvk.getKeyCheckValue(), conv.getKeyCheckValue());
+        assertEquals(KeyScheme.U, conv.getScheme());
+        assertEquals(pvk.getVariant(), conv.getVariant());
         //TPK and ZPK uses same encription variant
-        Assert.assertArrayEquals(tpk.getKeyBytes(), conv.getKeyBytes());
+        assertArrayEquals(tpk.getKeyBytes(), conv.getKeyBytes());
+    }
+
+    @Test
+    public void testFormKeyFromClearComponent() throws Throwable {
+        SecureDESKey sdk = jcesecmod
+          .formKEYfromThreeClearComponents((short) 128,
+            "ZPK",
+            "E09B073B4007541FAB76B04370451031",
+            "4CBF5D51EA8525EF045EFED6E386D9D9",
+            "00000000000000000000000000000000");
+        assertArrayEquals(ISOUtil.hex2byte("40D522"), sdk.getKeyCheckValue(), "1: KeyCheck was " + ISOUtil.hexString(sdk.getKeyCheckValue()));
+
+        sdk = jcesecmod
+          .formKEYfromClearComponents((short) 128,
+            "ZPK",
+            "E09B073B4007541FAB76B04370451031",
+            "4CBF5D51EA8525EF045EFED6E386D9D9",
+            "00000000000000000000000000000000");
+        assertArrayEquals(ISOUtil.hex2byte("40D522"), sdk.getKeyCheckValue(), "2: KeyCheck was " + ISOUtil.hexString(sdk.getKeyCheckValue()));
+
+        sdk = jcesecmod
+          .formKEYfromClearComponents((short) 128,
+            "ZPK",
+            "E09B073B4007541FAB76B04370451031",
+            "4CBF5D51EA8525EF045EFED6E386D9D9");
+        assertArrayEquals(ISOUtil.hex2byte("40D522"), sdk.getKeyCheckValue(), "3: KeyCheck was " + ISOUtil.hexString(sdk.getKeyCheckValue()));
     }
 
 }

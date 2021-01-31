@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,8 @@
 
 package org.jpos.space;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -27,12 +29,12 @@ import java.util.concurrent.TimeUnit;
 import org.jpos.iso.ISOUtil;
 
 import org.jpos.util.TPS;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  *
@@ -132,7 +134,7 @@ public class TSpacePerformanceTest  {
         }
     }
 
-    @Before
+    @BeforeEach
     public void setUp () {
         sp1 = new TSpace<String,Object>();
         sp2 = new TSpace<String,Object>();
@@ -182,9 +184,9 @@ public class TSpacePerformanceTest  {
         for (int i=0; i<size; i++)
           es.execute(new WriteSpaceWithNotifyTask("WriteTask2-"+i,sp2,sp1));
 
-        long stamp = System.currentTimeMillis();
+        Instant stamp = Instant.now();
         while (((ThreadPoolExecutor)es).getActiveCount() > 0) {
-          if (System.currentTimeMillis() - stamp < 10000){
+          if (Duration.between(stamp, Instant.now()).toMillis() < 10000){
             ISOUtil.sleep(100);
             continue;
           }
@@ -200,7 +202,7 @@ public class TSpacePerformanceTest  {
         es.awaitTermination(5, TimeUnit.SECONDS);
     }
 
-    @Ignore("Remove it when TSpace can pass it")
+    @Disabled("Remove it when TSpace can pass it")
     @Test
     public void testStolenEntryAtNotify() throws Throwable {
         int size = 10;
@@ -215,7 +217,7 @@ public class TSpacePerformanceTest  {
         for (int i=0; i<size; i++)
           es.execute(new ReadSpaceTask("WriteTask-"+i));
 
-        assertNull("Detected stolen entry at notify",sp2.in("lost-entry", 200));
+        assertNull(sp2.in("lost-entry", 200), "Detected stolen entry at notify");
 
         es.shutdownNow();
 //        es.awaitTermination(5, TimeUnit.SECONDS);

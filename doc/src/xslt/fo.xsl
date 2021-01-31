@@ -11,9 +11,48 @@
     <xsl:param name="highlight.source" select="1"/>
     <xsl:param name="highlight.xslthl.config">http://docbook.sourceforge.net/release/xsl/current/highlighting/xslthl-config.xml</xsl:param>
 
+    <!-- Font templates -->
+    <xsl:template name="pickfont-sans">
+      <xsl:text>Arial,sans-serif</xsl:text>
+    </xsl:template>
+    <xsl:template name="pickfont-serif">
+      <xsl:text>Georgia,serif</xsl:text>
+    </xsl:template>
+    <xsl:template name="pickfont-mono">
+      <xsl:text>Liberation Mono,Courier New,Courier,monospace</xsl:text>
+    </xsl:template>
+    <xsl:template name="pickfont-dingbat">
+      <xsl:call-template name="pickfont-sans"/>
+    </xsl:template>
+    <xsl:template name="pickfont-symbol">
+      <xsl:text>Symbol,ZapfDingbats</xsl:text>
+    </xsl:template>
+    <xsl:template name="pickfont-math">
+      <xsl:text>Liberation Serif,Times-Roman</xsl:text>
+    </xsl:template>
+
+    <!-- Fonts selection  -->
+    <xsl:param name="body.font.family">
+      <xsl:call-template name="pickfont-sans"/>
+    </xsl:param>
+    <xsl:param name="sans.font.family">
+      <xsl:call-template name="pickfont-sans"/>
+    </xsl:param>
+    <xsl:param name="monospace.font.family">
+      <xsl:call-template name="pickfont-mono"/>
+    </xsl:param>
+    <xsl:param name="math.font.family">
+      <xsl:call-template name="pickfont-math"/>
+    </xsl:param>
+    <xsl:param name="title.font.family">
+      <xsl:call-template name="pickfont-serif"/>
+    </xsl:param>
+
+
     <xsl:param name="paper.type" select="'A4'"/>
-    <xsl:param name="body.font.family" select="'serif'"/>
-    <xsl:param name="body.font.master">12</xsl:param>
+    <xsl:param name="body.font.master">10</xsl:param>
+    <xsl:param name="hyphenate">true</xsl:param>
+    <xsl:param name="alignment">justify</xsl:param>
     <xsl:param name="body.font.size">
       <xsl:value-of select="$body.font.master"/><xsl:text>pt</xsl:text>
     </xsl:param>
@@ -228,13 +267,13 @@
                     <fo:table-row>
                         <fo:table-cell text-align="center">
                             <fo:block>
-                                <fo:external-graphic src="url(images/logo.jpg)"/>
+                                <fo:external-graphic src="url(images/logo.png)" content-height="scale-to-fit" height="4.00in"/>
                             </fo:block>
-                            <fo:block font-family="Helvetica" font-size="20pt" padding-before="10mm">
-                                <xsl:value-of select="/d:book/d:bookinfo/d:title"/>
+                            <fo:block font-family="Helvetica" font-size="14pt" padding-before="10mm">
+                                <xsl:value-of select="/d:book/d:info/d:title"/>
                             </fo:block>
-                            <fo:block font-family="Helvetica" font-size="12pt" padding="10mm">
-                                <xsl:value-of select="/d:book/d:bookinfo/d:releaseinfo"/>
+                            <fo:block font-family="Helvetica" font-size="10pt" padding="10mm">
+                                Revision: <xsl:value-of select="/d:book/d:info/d:revhistory/d:revision/d:revnumber"/>
                             </fo:block>
                         </fo:table-cell>
                     </fo:table-row>

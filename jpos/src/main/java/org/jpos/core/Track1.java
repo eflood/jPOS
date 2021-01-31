@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -85,15 +85,7 @@ public class Track1 {
 
     @Override
     public String toString() {
-        return "Track1[" +
-          "pan='" + (pan != null ? ISOUtil.protect(pan) : "null") + '\'' +
-          ", nameOnCard='" + nameOnCard + '\'' +
-          ", exp='" + (exp != null ? "____" : "null") + '\'' +
-          ", cvv='" + (cvv != null ? "___" : "null") + '\'' +
-          ", serviceCode='" + serviceCode + '\'' +
-          ", discretionaryData= '" + discretionaryData + '\'' +
-          ", track1= '" + (track != null ? ISOUtil.protect(track) : "null") + '\'' +
-          ']';
+        return pan != null ? ISOUtil.protect(pan) : "nil";
     }
 
     @Override
@@ -120,7 +112,7 @@ public class Track1 {
     }
 
     public static class Builder {
-        private static String TRACK1_EXPR = "^%[A-Z]+([0-9]{1,19})\\^([^\\^]{2,26})\\^([0-9]{4})([0-9]{3})([0-9]{4})?([0-9]{1,10})?";
+        private static String TRACK1_EXPR = "^[%]?[A-Z]+([0-9]{1,19})\\^([^\\^]{2,26})\\^([0-9]{4})([0-9]{3})([0-9]{4})?([0-9]{1,10})?";
         private static Pattern TRACK1_PATTERN = Pattern.compile(TRACK1_EXPR);
         private String pan;
         private String nameOnCard;

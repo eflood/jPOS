@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,36 +18,63 @@
 
 package org.jpos.q2;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.MissingArgumentException;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.UnrecognizedOptionException;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.jdom2.input.SAXBuilder;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
+import org.jpos.core.Environment;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOUtil;
+import org.jpos.q2.install.ModuleUtils;
+import org.jpos.q2.ssh.SshService;
 import org.jpos.security.SystemSeed;
-import org.jpos.util.*;
+import org.jpos.util.Log;
+import org.jpos.util.LogEvent;
+import org.jpos.util.Logger;
+import org.jpos.util.NameRegistrar;
+import org.jpos.util.PGPHelper;
+import org.jpos.util.SimpleLogListener;
+import org.jpos.util.slf4j.Slf4JDynamicBinder;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
 import org.osgi.framework.launch.Framework;
 import org.osgi.framework.launch.FrameworkFactory;
-
+import org.xml.sax.SAXException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
-import javax.management.*;
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
+import javax.management.ObjectInstance;
+import javax.management.ObjectName;
 import java.io.*;
 import java.lang.management.ManagementFactory;
-import java.nio.file.*;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static java.util.ResourceBundle.*;
+import static java.util.ResourceBundle.getBundle;
 
 /**
  * @author <a href="mailto:taherkordy@dpi2.dpi.net.ir">Alireza Taherkordi</a>
@@ -82,7 +109,8 @@ public class Q2 implements FileFilter, Runnable {
     private ClassLoader mainClassLoader;
     private Log log;
     private volatile boolean started;
-    private volatile boolean shutdown;
+    private CountDownLatch ready = new CountDownLatch(1);
+    private CountDownLatch shutdown = new CountDownLatch(1);
     private volatile boolean shuttingDown;
     private volatile Thread q2Thread;
     private String[] args;
@@ -100,7 +128,17 @@ public class Q2 implements FileFilter, Runnable {
     private String name = JMX_NAME;
     private long lastVersionLog;
     private String watchServiceClassname;
-
+    private boolean enableSsh;
+    private boolean disableDeployScan;
+    private boolean disableDynamicClassloader;
+    private int sshPort;
+    private String sshAuthorizedKeys;
+    private String sshUser;
+    private String sshHostKeyFile;
+    private static String DEPLOY_PREFIX = "META-INF/q2/deploy/";
+    private static String CFG_PREFIX = "META-INF/q2/cfg/";
+    private String nameRegistrarKey;
+    
     public Q2 (String[] args, BundleContext bundleContext) {
         super();
         this.args = args;
@@ -112,6 +150,14 @@ public class Q2 implements FileFilter, Runnable {
         deployDir.mkdirs ();
         mainClassLoader = getClass().getClassLoader();
         this.bundleContext = bundleContext;
+        try {
+            Slf4JDynamicBinder.applyMods();
+        }
+        catch (Exception ignored) {
+            // We won't stop anything just because we could
+            // inot initialize slf4j.
+            ignored.printStackTrace();
+        }
         registerQ2();
     }
     public Q2 () {
@@ -124,7 +170,7 @@ public class Q2 implements FileFilter, Runnable {
         this(args, null);
     }
     public void start () {
-        if (shutdown)
+        if (shutdown.getCount() == 0)
             throw new IllegalStateException("Q2 has been stopped");
         new Thread (this).start();
     }
@@ -191,9 +237,18 @@ public class Q2 implements FileFilter, Runnable {
             initConfigDecorator();
             if (startOSGI)
                 startOSGIFramework();
+            if (enableSsh) {
+                deployElement(SshService.createDescriptor(sshPort, sshUser, sshAuthorizedKeys, sshHostKeyFile),
+                  "05_sshd-" + getInstanceId() + ".xml", false, true);
+            }
 
-            for (int i = 1; !shutdown; i++) {
+            deployInternal();
+            for (int i = 1; shutdown.getCount() > 0; i++) {
                 try {
+                    if (i > 1 && disableDeployScan) {
+                        shutdown.await();
+                        break;
+                    }
                     boolean forceNewClassLoader = scan() && i > 1;
                     QClassLoader oldClassLoader = loader;
                     loader = loader.scan(forceNewClassLoader);
@@ -207,21 +262,24 @@ public class Q2 implements FileFilter, Runnable {
                         );
                         q2Thread.setContextClassLoader(loader);
                     }
+                    logVersion();
+
                     deploy();
                     checkModified();
+                    ready.countDown();
                     if (!waitForChanges(service))
                         break;
-                    logVersion();
-                } catch (InterruptedException ignored) {
+                } catch (InterruptedException | IllegalAccessError ignored) {
                     // NOPMD
                 } catch (Throwable t) {
-                    log.error("start", t);
+                    log.error("start", t.getMessage());
                     relax();
                 }
             }
             undeploy();
             try {
-                server.unregisterMBean(loaderName);
+                if (server.isRegistered(loaderName))
+                    server.unregisterMBean(loaderName);
             } catch (InstanceNotFoundException e) {
                 log.error(e);
             }
@@ -244,10 +302,20 @@ public class Q2 implements FileFilter, Runnable {
         shutdown(false);
     }
     public boolean running() {
-        return started && !shutdown;
+        return started && shutdown.getCount() > 0;
+    }
+    public boolean ready() {
+        return ready.getCount() == 0 && shutdown.getCount() > 0;
+    }
+    public boolean ready (long millis) {
+        try {
+            ready.await(millis, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ignored) { }
+        return ready();
     }
     public void shutdown (boolean join) {
-        shutdown = true;
+        shutdown.countDown();
+        unregisterQ2();
         if (q2Thread != null) {
             log.info ("shutting down");
             q2Thread.interrupt ();
@@ -285,6 +353,13 @@ public class Q2 implements FileFilter, Runnable {
         return watchServiceClassname;
     }
 
+    public static Q2 getQ2() {
+        return (Q2) NameRegistrar.getIfExists(JMX_NAME);
+    }
+    public static Q2 getQ2(long timeout) {
+        return (Q2) NameRegistrar.get(JMX_NAME, timeout);
+    }
+
     private boolean isXml(File f) {
         return f != null && f.getName().toLowerCase().endsWith(".xml");
     }
@@ -313,7 +388,7 @@ public class Q2 implements FileFilter, Runnable {
         Iterator<Map.Entry<File,QEntry>> iter = dirMap.entrySet().iterator();
 
         try {
-            while (iter.hasNext() && !shutdown) {
+            while (iter.hasNext() && shutdown.getCount() > 0) {
                 Map.Entry<File,QEntry> entry = iter.next();
                 File   f        = entry.getKey ();
                 QEntry qentry   = entry.getValue ();
@@ -363,7 +438,7 @@ public class Q2 implements FileFilter, Runnable {
             new Thread ("Q2-ShutdownHook") {
                 public void run () {
                     shuttingDown = true;
-                    shutdown = true;
+                    shutdown.countDown();
                     if (q2Thread != null) {
                         log.info ("shutting down (hook)");
                         try {
@@ -506,8 +581,7 @@ public class Q2 implements FileFilter, Runnable {
                     return false;
                 }
             }
-            String enabledAttribute = rootElement.getAttributeValue("enabled", "true");
-            if ("true".equalsIgnoreCase(enabledAttribute) || "yes".equalsIgnoreCase(enabledAttribute)) {
+            if (QFactory.isEnabled(rootElement)) {
                 if (evt != null)
                     evt.addMessage("deploy: " + f.getCanonicalPath());
                 Object obj = factory.instantiate (this, rootElement);
@@ -518,7 +592,7 @@ public class Q2 implements FileFilter, Runnable {
                 );
                 qentry.setInstance (instance);
             } else if (evt != null) {
-                evt.addMessage("deploy ignored (enabled='" + enabledAttribute + "'): " + f.getCanonicalPath());
+                evt.addMessage("deploy ignored (enabled='" + QFactory.getEnabledAttribute(rootElement) + "'): " + f.getCanonicalPath());
             }
         } 
         catch (InstanceAlreadyExistsException e) {
@@ -563,7 +637,7 @@ public class Q2 implements FileFilter, Runnable {
     }
     public void relax (long sleep) {
         try {
-            Thread.sleep (sleep);
+            shutdown.await(sleep, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ignored) { }
     }
     public void relax () {
@@ -580,7 +654,11 @@ public class Q2 implements FileFilter, Runnable {
                 getLog().warn ("init-system-logger", e);
             }
         }
-        getLog().info("Q2 started, deployDir=" + deployDir.getAbsolutePath());
+        Environment env = Environment.getEnvironment();
+        getLog().info("Q2 started, deployDir=" + deployDir.getAbsolutePath() + ", environment=" + env.getName());
+        if (env.getErrorString() != null)
+            getLog().error(env.getErrorString());
+
     }
     public Log getLog () {
         if (log == null) {
@@ -607,39 +685,35 @@ public class Q2 implements FileFilter, Runnable {
         String appVersionString = getAppVersionString();
         int l = PGPHelper.checkLicense();
         String sl = l > 0 ? " " + Integer.toString(l,16) : "";
-        String vs = null;
+        StringBuilder vs = new StringBuilder();
         if (appVersionString != null) {
-            vs = String.format ("jPOS %s %s/%s%s (%s)%n%s%s",
+            vs.append(
+              String.format ("jPOS %s %s/%s%s (%s)%n%s%s",
                 getVersion(), getBranch(), getRevision(), sl, getBuildTimestamp(), appVersionString, getLicensee()
+              )
             );
         } else {
-            vs = String.format("jPOS %s %s/%s%s (%s) %s",
+            vs.append(
+              String.format("jPOS %s %s/%s%s (%s) %s",
                     getVersion(), getBranch(), getRevision(), sl, getBuildTimestamp(), getLicensee()
+              )
             );
         }
-        if ((l & 0xE0000) > 0)
-            throw new IllegalAccessError(vs);
-        return vs;
+//        if ((l & 0xE0000) > 0)
+//            throw new IllegalAccessError(vs);
+
+        return vs.toString();
     }
-    public static String getLicensee() {
-        InputStream is = Q2.class.getClassLoader().getResourceAsStream(LICENSEE);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        if (is != null) {
-            BufferedReader br = new BufferedReader (new InputStreamReader(is));
-            PrintStream p = new PrintStream(baos);
-            p.println ();
-            p.println ();
-            try {
-                while (br.ready())
-                    p.println (br.readLine());
-            } catch (Exception ignored) {
-                // NOPMD ignore error
-            }
+
+    private static String getLicensee() {
+        String s = null;
+        try {
+            s = PGPHelper.getLicensee();
+        } catch (IOException ignored) {
+            // NOPMD: ignore
         }
-        return baos.toString();
+        return s;
     }
-
-
     private void parseCmdLine (String[] args) {
         CommandLineParser parser = new DefaultParser ();
 
@@ -655,6 +729,14 @@ public class Q2 implements FileFilter, Runnable {
         options.addOption ("O", "osgi", false, "Start experimental OSGi framework server");
         options.addOption ("p", "pid-file", true, "Store project's pid");
         options.addOption ("n", "name", true, "Optional name (defaults to 'Q2')");
+        options.addOption ("s", "ssh", false, "Enable SSH server");
+        options.addOption ("sp", "ssh-port", true, "SSH port (defaults to 2222)");
+        options.addOption ("sa", "ssh-authorized-keys", true, "Path to authorized key file (defaults to 'cfg/authorized_keys')");
+        options.addOption ("su", "ssh-user", true, "SSH user (defaults to 'admin')");
+        options.addOption ("sh", "ssh-host-key-file", true, "SSH host key file, defaults to 'cfg/hostkeys.ser'");
+        options.addOption ("Ns", "no-scan", false, "Disables deploy directory scan");
+        options.addOption ("Nd", "no-dynamic", false, "Disables dynamic classloader");
+        options.addOption ("E", "environment", true, "Environment name");
 
         try {
             CommandLine line = parser.parse (options, args);
@@ -689,10 +771,21 @@ public class Q2 implements FileFilter, Runnable {
                 pidFile = line.getOptionValue("p");
             if (line.hasOption("n"))
                 name = line.getOptionValue("n");
+            if (line.hasOption("E")) {
+                System.setProperty("jpos.env", line.getOptionValue("E"));
+                Environment.getEnvironment();
+            }
+            disableDeployScan = line.hasOption("Ns");
+            disableDynamicClassloader = line.hasOption("Nd");
+            enableSsh = line.hasOption("s");
+            sshPort = Integer.parseInt(line.getOptionValue("sp", "2222"));
+            sshAuthorizedKeys = line.getOptionValue ("sa", "cfg/authorized_keys");
+            sshUser = line.getOptionValue("su", "admin");
+            sshHostKeyFile = line.getOptionValue("sh", "cfg/hostkeys.ser");
         } catch (MissingArgumentException e) {
             System.out.println("ERROR: " + e.getMessage());
             System.exit(1);
-        } catch (IllegalAccessError e) {
+        } catch (IllegalAccessError | UnrecognizedOptionException e) {
             System.out.println(e.getMessage());
             System.exit(1);
         } catch (Exception e) {
@@ -719,7 +812,7 @@ public class Q2 implements FileFilter, Runnable {
     public void deployElement (Element e, String fileName, boolean encrypt, boolean isTransient)
         throws ISOException, IOException, GeneralSecurityException
     {
-        e = (Element) e.clone ();
+        e = e.clone ();
 
         XMLOutputter out = new XMLOutputter (Format.getPrettyFormat());
         Document doc = new Document ();
@@ -751,7 +844,7 @@ public class Q2 implements FileFilter, Runnable {
     protected byte[] getKey() {
         return
           ISOUtil.xor(SystemSeed.getSeed(8, 8),
-          ISOUtil.hex2byte("BD653F60F980F788"));
+          ISOUtil.hex2byte(System.getProperty("jpos.deploy.key", "BD653F60F980F788")));
     }
     protected Document encrypt (Document doc)
         throws GeneralSecurityException, IOException
@@ -837,8 +930,12 @@ public class Q2 implements FileFilter, Runnable {
         while (rename.exists()){
             rename = new File(rename.getAbsolutePath()+"."+extension);
         }
-        getLog().warn("Tidying "+f.getAbsolutePath()+" out of the way, by adding ."+extension,"It will be called: "+rename.getAbsolutePath()+" see log above for detail of problem.");
-        f.renameTo(rename);
+        if (f.renameTo(rename)){
+            getLog().warn("Tidying "+f.getAbsolutePath()+" out of the way, by adding ."+extension,"It will be called: "+rename.getAbsolutePath()+" see log above for detail of problem.");
+        }
+        else {
+            getLog().warn("Error Tidying. Could not tidy  "+f.getAbsolutePath()+" out of the way, by adding ."+extension,"It could not be called: "+rename.getAbsolutePath()+" see log above for detail of problem.");
+        }
     }
 
     private void deleteFile (File f, String iuuid) {
@@ -889,11 +986,13 @@ public class Q2 implements FileFilter, Runnable {
     }
     private void logVersion () {
         long now = System.currentTimeMillis();
-        if (now - lastVersionLog > 3600000L) {
+        if (now - lastVersionLog > 86400000L) {
             LogEvent evt = getLog().createLogEvent("version");
             evt.addMessage(getVersionString());
             Logger.log(evt);
             lastVersionLog = now;
+            while (running() && (PGPHelper.checkLicense() & 0xF0000) != 0)
+                relax(60000L);
         }
     }
     private void setExit (boolean exit) {
@@ -940,6 +1039,9 @@ public class Q2 implements FileFilter, Runnable {
         } catch (MissingResourceException ignored) {
             return null;
         }
+    }
+    public boolean isDisableDynamicClassloader() {
+        return disableDynamicClassloader;
     }
     public static class QEntry {
         long deployed;
@@ -1032,6 +1134,11 @@ public class Q2 implements FileFilter, Runnable {
                 );
                 return false; // deploy directory no longer valid
             }
+            try {
+                Environment.reload();
+            } catch (IOException e) {
+                getLog().warn(e);
+            }
         }
         return true;
     }
@@ -1042,9 +1149,64 @@ public class Q2 implements FileFilter, Runnable {
                 String key = name + (i > 0 ? "-" + i : "");
                 if (NameRegistrar.getIfExists(key) == null) {
                     NameRegistrar.register(key, this);
+                    this.nameRegistrarKey = key;
                     break;
                 }
             }
+        }
+    }
+
+    private void unregisterQ2() {
+        synchronized (Q2.class) {
+            if (nameRegistrarKey != null) {
+                NameRegistrar.unregister(nameRegistrarKey);
+                nameRegistrarKey = null;
+            }
+        }
+
+    }
+
+    private void deployInternal() throws IOException, JDOMException, SAXException, ISOException, GeneralSecurityException {
+        extractCfg();
+        extractDeploy();
+    }
+    private void extractCfg() throws IOException {
+        List<String> resources = ModuleUtils.getModuleEntries(CFG_PREFIX);
+        if (resources.size() > 0)
+            new File("cfg").mkdirs();
+        for (String resource : resources)
+            copyResourceToFile(resource, new File("cfg", resource.substring(CFG_PREFIX.length())));
+    }
+    private void extractDeploy() throws IOException, JDOMException, SAXException, ISOException, GeneralSecurityException {
+        List<String> qbeans = ModuleUtils.getModuleEntries(DEPLOY_PREFIX);
+        for (String resource : qbeans) {
+            if (resource.toLowerCase().endsWith(".xml"))
+                deployResource(resource);
+            else
+                copyResourceToFile(resource, new File("cfg", resource.substring(DEPLOY_PREFIX.length())));
+
+        }
+    }
+
+    private void copyResourceToFile(String resource, File destination) throws IOException {
+        // taken from @vsalaman's Install using human readable braces as God mandates
+        try (InputStream source = getClass().getClassLoader().getResourceAsStream(resource)) {
+            try (FileOutputStream output = new FileOutputStream(destination)) {
+                int n;
+                byte[] buffer = new byte[4096];
+                while (-1 != (n = source.read(buffer))) {
+                    output.write(buffer, 0, n);
+                }
+            }
+        }
+    }
+    private void deployResource(String resource)
+      throws IOException, SAXException, JDOMException, GeneralSecurityException, ISOException
+    {
+        SAXBuilder builder = new SAXBuilder();
+        try (InputStream source = getClass().getClassLoader().getResourceAsStream(resource)) {
+            Document doc = builder.build(source);
+            deployElement (doc.getRootElement(), resource.substring(DEPLOY_PREFIX.length()), false,true);
         }
     }
 }

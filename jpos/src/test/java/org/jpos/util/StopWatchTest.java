@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,12 +18,12 @@
 
 package org.jpos.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StopWatchTest {
     @Test
@@ -34,5 +34,12 @@ public class StopWatchTest {
         sw.finish();
         assertTrue(System.currentTimeMillis() - now >= 500);
         assertTrue (sw.isFinished());
+    }
+
+    @Test
+    public void testStopWatchStatic() throws Throwable {
+        long now = System.currentTimeMillis();
+        String s = StopWatch.get(500, TimeUnit.MILLISECONDS, () -> "The Quick Brown Fox jumps over the laxy dog");
+        assertTrue(System.currentTimeMillis() - now >= 500);
     }
 }

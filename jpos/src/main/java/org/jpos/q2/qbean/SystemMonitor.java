@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -20,13 +20,13 @@ package org.jpos.q2.qbean;
 
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
+import org.jpos.core.Environment;
 import org.jpos.iso.ISOUtil;
 import org.jpos.q2.Q2;
 import org.jpos.q2.QBeanSupport;
-import org.jpos.util.Loggeable;
-import org.jpos.util.Logger;
-import org.jpos.util.NameRegistrar;
+import org.jpos.util.*;
 
+import javax.crypto.Cipher;
 import javax.management.MBeanServerConnection;
 import java.io.*;
 import java.lang.management.ManagementFactory;
@@ -35,6 +35,7 @@ import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.net.InetAddress;
 import java.nio.charset.Charset;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.TextStyle;
@@ -42,6 +43,7 @@ import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneOffsetTransitionRule;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Periodically dumps Thread and memory usage
@@ -60,6 +62,8 @@ public class SystemMonitor extends QBeanSupport
     private static final int MB = 1024*1024;
     private String[] scripts;
     private String frozenDump;
+    private String localHost;
+    private String processName;
 
     public void startService() {
         try {
@@ -99,14 +103,14 @@ public class SystemMonitor extends QBeanSupport
         return detailRequired;
     }
 
-    void dumpThreads(ThreadGroup g, PrintStream p, String indent) {
+    private void dumpThreads(ThreadGroup g, PrintStream p, String indent) {
         Thread[] list = new Thread[g.activeCount() + 5];
         int nthreads = g.enumerate(list);
         for (int i = 0; i < nthreads; i++)
             p.println(indent + list[i]);
     }
 
-    public void showThreadGroup(ThreadGroup g, PrintStream p, String indent) {
+    void showThreadGroup(ThreadGroup g, PrintStream p, String indent) {
         if (g.getParent() != null)
             showThreadGroup(g.getParent(), p, indent + "  ");
         else
@@ -114,7 +118,10 @@ public class SystemMonitor extends QBeanSupport
     }
 
     public void run() {
+        localHost = getLocalHost();
+        processName = ManagementFactory.getRuntimeMXBean().getName();
         while (running()) {
+            frozenDump = generateFrozenDump ("");
             log.info(this);
             frozenDump = null;
             try {
@@ -124,11 +131,15 @@ public class SystemMonitor extends QBeanSupport
             } catch (InterruptedException ignored) {
             }
         }
+        frozenDump = generateFrozenDump ("");
+        log.info(this);
+        frozenDump = null;
     }
     public void dump (PrintStream p, String indent) {
         if (frozenDump == null)
             frozenDump = generateFrozenDump(indent);
         p.print(frozenDump);
+        dumpMetrics();
     }
     @Override
     public void setConfiguration(Configuration cfg) throws ConfigurationException {
@@ -177,15 +188,25 @@ public class SystemMonitor extends QBeanSupport
         Instant instant = Instant.now();
 
         File cwd = new File(".");
-
         String freeSpace = ISOUtil.readableFileSize(cwd.getFreeSpace());
         String usableSpace = ISOUtil.readableFileSize(cwd.getUsableSpace());
-
         p.printf ("%s           OS: %s (%s)%n", indent, System.getProperty("os.name"), System.getProperty("os.version"));
-        p.printf ("%s process name: %s%n", indent, runtimeMXBean.getName());
-        p.printf ("%s         host: %s%n", indent, getLocalHost());
+        int maxKeyLength = 0;
+        try {
+            maxKeyLength = Cipher.getMaxAllowedKeyLength("AES");
+        } catch (NoSuchAlgorithmException ignored) { }
+        p.printf("%s         Java: %s (%s) AES-%s%n", indent,
+          System.getProperty("java.version"),
+          System.getProperty("java.vendor"),
+          maxKeyLength == Integer.MAX_VALUE ? "secure" : Integer.toString(maxKeyLength)
+        );
+        p.printf ("%s  environment: %s%n", indent, Environment.getEnvironment().getName());
+        p.printf ("%s process name: %s%n", indent, processName);
+        p.printf ("%s    user name: %s%n", indent, System.getProperty("user.name"));
+        p.printf ("%s         host: %s%n", indent, localHost);
         p.printf ("%s          cwd: %s%n", indent, System.getProperty("user.dir"));
         p.printf ("%s   free space: %s%n", indent, freeSpace);
+
         if (!freeSpace.equals(usableSpace))
             p.printf ("%s usable space: %s%n", indent, usableSpace);
         p.printf ("%s      version: %s (%s)%n", indent, Q2.getVersion(), getRevision());
@@ -246,5 +267,19 @@ public class SystemMonitor extends QBeanSupport
             return osMBean.getSystemLoadAverage();
         } catch (Throwable ignored) { }
         return -1;
+    }
+
+    private void dumpMetrics() {
+        if (cfg.get("metrics-dir", null) != null) {
+            File dir = new File(cfg.get("metrics-dir"));
+            dir.mkdir();
+            NameRegistrar.getAsMap().forEach((key, value) -> {
+                if (value instanceof MetricsProvider) {
+                    Metrics metrics = ((MetricsProvider) value).getMetrics();
+                    if (metrics != null)
+                        metrics.dumpHistograms(dir, key + "-");
+                }
+            });
+        }
     }
 }

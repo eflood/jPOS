@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -18,13 +18,15 @@
 
 package org.jpos.space;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.apache.commons.lang3.JavaVersion.JAVA_14;
+import static org.apache.commons.lang3.SystemUtils.isJavaVersionAtMost;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 @SuppressWarnings("unchecked")
 public class SpaceUtilTest {
@@ -32,13 +34,13 @@ public class SpaceUtilTest {
     @Test
     public void testConstructor() throws Throwable {
         new SpaceUtil();
-        assertTrue("Test completed without Exception", true);
+        assertTrue(true, "Test completed without Exception");
     }
 
     @Test
     public void testInpAll() throws Throwable {
         Object[] result = SpaceUtil.inpAll(new TSpace(), "testString");
-        assertEquals("result.length", 0, result.length);
+        assertEquals(0, result.length, "result.length");
     }
 
     @Test
@@ -46,10 +48,10 @@ public class SpaceUtilTest {
         Space sp = SpaceFactory.getSpace("testSpaceUtilSpaceUri");
         SpaceUtil.nextLong(sp, "");
         Object[] result = SpaceUtil.inpAll(sp, "");
-        assertEquals("(TSpace) sp.entries.size()", 0, ((TSpace) sp).entries.size());
-        assertFalse("(TSpace) sp.entries.containsKey(\"\")", ((TSpace) sp).entries.containsKey(""));
-        assertEquals("result.length", 1, result.length);
-        assertEquals("result[0]", 1L, result[0]);
+        assertEquals(0, ((TSpace) sp).entries.size(), "(TSpace) sp.entries.size()");
+        assertFalse(((TSpace) sp).entries.containsKey(""), "(TSpace) sp.entries.containsKey(\"\")");
+        assertEquals(1, result.length, "result.length");
+        assertEquals(1L, result[0], "result[0]");
     }
 
     @Test
@@ -58,7 +60,11 @@ public class SpaceUtilTest {
             SpaceUtil.inpAll(null, "");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.space.Space.inp(Object)\" because \"sp\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
@@ -66,8 +72,8 @@ public class SpaceUtilTest {
     public void testNextLong() throws Throwable {
         Space sp = new TSpace();
         long result = SpaceUtil.nextLong(sp, "");
-        assertEquals("(TSpace) sp.entries.size()", 1, ((TSpace) sp).entries.size());
-        assertEquals("result", 1L, result);
+        assertEquals(1, ((TSpace) sp).entries.size(), "(TSpace) sp.entries.size()");
+        assertEquals(1L, result, "result");
     }
 
     @Test
@@ -77,8 +83,8 @@ public class SpaceUtilTest {
             SpaceUtil.nextLong(sp, null);
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertEquals("ex.getMessage()", "key=null, value=1", ex.getMessage());
-            assertTrue("(TSpace) sp.isEmpty()", ((TSpace) sp).isEmpty());
+            assertEquals("key=null, value=1", ex.getMessage(), "ex.getMessage()");
+            assertTrue(((TSpace) sp).isEmpty(), "(TSpace) sp.isEmpty()");
         }
     }
 
@@ -88,14 +94,18 @@ public class SpaceUtilTest {
             SpaceUtil.nextLong(null, "");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot enter synchronized block because \"sp\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 
     @Test
     public void testWipe1() throws Throwable {
         SpaceUtil.wipe(SpaceFactory.getSpace(), "");
-        assertTrue("Test completed without Exception", true);
+        assertTrue(true, "Test completed without Exception");
         // dependencies on static and environment state led to removal of 1
         // assertion
     }
@@ -106,7 +116,11 @@ public class SpaceUtilTest {
             SpaceUtil.wipe(null, "");
             fail("Expected NullPointerException to be thrown");
         } catch (NullPointerException ex) {
-            assertNull("ex.getMessage()", ex.getMessage());
+            if (isJavaVersionAtMost(JAVA_14)) {
+                assertNull(ex.getMessage(), "ex.getMessage()");
+            } else {
+                assertEquals("Cannot invoke \"org.jpos.space.Space.inp(Object)\" because \"sp\" is null", ex.getMessage(), "ex.getMessage()");
+            }
         }
     }
 }

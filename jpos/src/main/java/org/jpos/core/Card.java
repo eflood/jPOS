@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,6 +22,7 @@ import org.jpos.iso.ISODate;
 import org.jpos.iso.ISOMsg;
 import org.jpos.iso.ISOUtil;
 
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.Objects;
 
@@ -56,6 +57,10 @@ public class Card {
         return pan;
     }
 
+    public BigInteger getPanAsNumber() {
+        return new BigInteger(pan);
+    }
+
     public String getExp() {
         return exp;
     }
@@ -76,20 +81,17 @@ public class Card {
         return track2 != null;
     }
 
-    public String getBIN () {
+    public boolean hasBothTracks() {
+        return hasTrack1() && hasTrack2();
+    }
+
+    public String getBin () {
         return pan.substring(0, BINLEN);
     }
 
     @Override
     public String toString() {
-        return "Card[" +
-          "pan='" + (pan != null ? ISOUtil.protect(pan) : "null") + '\'' +
-          ", exp='" + (exp != null ? "____" : "null") + '\'' +
-          ", cvv2='" + (cvv2 != null ? "____" : "null") + '\'' +
-          ", serviceCode='" + serviceCode + '\'' +
-          ", track1='" + track1 + '\'' +
-          ", track2='" + track2 + '\'' +
-          ']';
+        return pan != null ? ISOUtil.protect(pan) : "nil";
     }
 
     @Override
@@ -149,6 +151,8 @@ public class Card {
         private String serviceCode;
         private Track1 track1;
         private Track2 track2;
+        private Track1.Builder track1Builder = Track1.builder();
+        private Track2.Builder track2Builder = Track2.builder();
         private CardValidator validator = DEFAULT_CARD_VALIDATOR;
 
         private Builder () { }
@@ -161,7 +165,14 @@ public class Card {
             this.validator = validator;
             return this;
         }
-
+        public Builder withTrack1Builder (Track1.Builder track1Builder) {
+            this.track1Builder = track1Builder;
+            return this;
+        }
+        public Builder withTrack2Builder (Track2.Builder track2Builder) {
+            this.track2Builder = track2Builder;
+            return this;
+        }
         public Builder track1 (Track1 track1) {
             this.track1 = track1;
             return this;
@@ -176,9 +187,33 @@ public class Card {
             if (m.hasField(14))
                 exp(m.getString(14));
             if (m.hasField(35))
-                track2(Track2.builder().track(m.getString(35)).build());
+                track2(track2Builder.track(m.getString(35)).build());
             if (m.hasField(45))
-                track1(Track1.builder().track(m.getString(45)).build());
+                track1(track1Builder.track(m.getString(45)).build());
+            if (pan == null && track2 != null)
+                pan (track2.getPan());
+            if (pan == null && track1 != null)
+                pan (track1.getPan());
+            if (exp == null && track2 != null)
+                exp (track2.getExp());
+            if (exp == null && track1 != null)
+                exp (track1.getExp());
+            if (track2 != null) {
+                if (pan == null)
+                    pan (track2.getPan());
+                if (exp == null)
+                    exp (track2.getExp());
+                if (serviceCode == null)
+                    serviceCode(track2.getServiceCode());
+            }
+            if (track1 != null) {
+                if (pan == null)
+                    pan (track1.getPan());
+                if (exp == null)
+                    exp (track1.getExp());
+                if (serviceCode == null)
+                    serviceCode(track1.getServiceCode());
+            }
             return this;
         }
 

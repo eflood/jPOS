@@ -1,6 +1,6 @@
 /*
  * jPOS Project [http://jpos.org]
- * Copyright (C) 2000-2016 Alejandro P. Revilla
+ * Copyright (C) 2000-2021 jPOS Software SRL
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -141,7 +141,7 @@ public class CardHolder implements Cloneable, Serializable, Loggeable {
             exp = s.substring(separatorIndex+1, separatorIndex+1+4);
             trailer = s.substring(separatorIndex+1+4);
         } else 
-            throw new InvalidCardException (s);
+            throw new InvalidCardException ("Invalid track2 format");
     }
 
     /**
@@ -251,7 +251,7 @@ public class CardHolder implements Cloneable, Serializable, Loggeable {
         throws InvalidCardException
     { 
         if (pan.length() < MINPANLEN)
-            throw new InvalidCardException (pan);
+            throw new InvalidCardException ("PAN length smaller than min required");
         this.pan = pan;
     }
 
@@ -279,7 +279,7 @@ public class CardHolder implements Cloneable, Serializable, Loggeable {
         throws InvalidCardException
     { 
         if (exp.length() != 4)
-            throw new InvalidCardException (pan+"/"+exp);
+            throw new InvalidCardException ("Invalid Exp length, must be 4");
         this.exp = exp;
     }
 
